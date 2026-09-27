@@ -1,0 +1,292 @@
+@use "../styles/tokens" as *;
+
+.registerForm {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  padding: 32px 20px;
+  width: min(640px, 100%);
+  background-color: $accent-color-1;
+  border-radius: $radius-lg;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+
+  .logo {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+
+    img {
+      height: 36px;
+      margin-bottom: 40px;
+    }
+
+    h1 {
+      font-size: clamp(2rem, 6vw, 3rem);
+      font-weight: 700;
+      color: #333;
+
+      span {
+        color: $primary-color-text;
+      }
+    }
+  }
+
+  .heading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 28px;
+    text-align: center;
+
+    h3 {
+      font-size: 1.05rem;
+      font-weight: 500;
+      color: $grey;
+
+      span {
+        color: $primary-color-text;
+      }
+    }
+  }
+
+  form {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+
+    .formRow {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 18px;
+      width: 100%;
+
+      .formGroup {
+        margin-bottom: 0;
+      }
+    }
+
+    .formGroup {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      justify-content: center;
+      width: 100%;
+      margin-bottom: 18px;
+      background-color: $white;
+      border-radius: $radius-md;
+      padding: 14px 16px;
+
+      label {
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: $grey;
+        margin-bottom: 8px;
+        text-align: left;
+      }
+
+      .inputGroup {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        background-color: transparent;
+
+        input {
+          width: 100%;
+          border: none;
+          outline: none;
+          font-size: 1rem;
+          font-weight: 400;
+          color: #222;
+          background-color: transparent;
+          margin-left: 10px;
+
+          &::placeholder {
+            font-weight: 400;
+            color: $grey-light;
+            font-style: normal;
+          }
+        }
+
+        .inputIcon {
+          font-size: 1.15rem;
+          color: $primary-color-text;
+          flex-shrink: 0;
+        }
+
+        .show_hide {
+          background: none;
+          border: none;
+          border-radius: 8px;
+          color: $primary-color-text;
+          cursor: pointer;
+          transition: color 0.2s ease-in-out;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 8px;
+
+          &:hover {
+            color: $primary-color-dark;
+          }
+
+          &:focus-visible {
+            @include focus-ring;
+          }
+        }
+      }
+
+      &.hasError {
+        box-shadow: 0 0 0 2px rgba($error-color, 0.6);
+      }
+    }
+
+    .fieldError {
+      display: block;
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: $error-color;
+      align-self: flex-start;
+    }
+
+    .fieldHint {
+      display: block;
+      font-size: 0.8rem;
+      color: $grey-light;
+      align-self: flex-start;
+    }
+
+    .visuallyHidden {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    .avatarPicker {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      width: 100%;
+      padding: 18px;
+      border: 2px dashed rgba($primary-color, 0.35);
+      border-radius: $radius-md;
+      background-color: $accent-color-1;
+      text-align: center;
+    }
+
+    .avatarPreview {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid $primary-color;
+      flex-shrink: 0;
+
+      &--empty {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: $white;
+        color: $primary-color-text;
+        font-size: 1.5rem;
+      }
+    }
+
+    .avatarPickerControls {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .avatarFileName {
+      font-size: 0.8rem;
+      color: $grey-light;
+      max-width: 260px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .formButton {
+      width: 100%;
+      border: none;
+      background-color: $primary-color-dark;
+      color: #fff;
+      font-size: 1.1rem;
+      font-weight: 600;
+      padding: 0.9rem;
+      border-radius: $radius-full;
+      cursor: pointer;
+      transition: background-color 0.2s ease-in-out;
+      margin: 12px 0;
+
+      &:hover {
+        background-color: $primary-color-dark-hover;
+      }
+
+      &:focus-visible {
+        @include focus-ring;
+      }
+
+      &:disabled {
+        opacity: 0.7;
+        cursor: not-allowed;
+      }
+    }
+
+    span {
+      font-size: 0.95rem;
+      color: $grey;
+      margin-top: 4px;
+      text-align: center;
+
+      a {
+        color: $primary-color-text;
+        text-decoration: none;
+        font-weight: 600;
+        border-radius: 4px;
+
+        &:hover {
+          text-decoration: underline;
+        }
+
+        &:focus-visible {
+          @include focus-ring;
+        }
+      }
+    }
+  }
+}
+
+@media (max-width: 560px) {
+  .registerForm form .formRow {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 420px) {
+  .registerForm {
+    padding: 24px 14px;
+
+    .logo img {
+      height: 30px;
+      margin-bottom: 28px;
+    }
+  }
+}

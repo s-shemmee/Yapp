@@ -1,8 +1,16 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useRef, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import logo from "../assets/logo.png";
+import "./Register.scss";
+import { APP_NAME } from "../constants";
 import { auth, db, storage } from "../firebase";
-import { createUserWithEmailAndPassword, updateProfile, User } from "firebase/auth";
+import {
+  createUserWithEmailAndPassword,
+  updateProfile,
+  deleteUser,
+  User,
+} from "firebase/auth";
+import { FirebaseError } from "firebase/app";
 import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import { doc, setDoc } from "firebase/firestore";
 import AccountCircleOutlinedIcon from "@mui/icons-material/AccountCircleOutlined";
@@ -13,174 +21,352 @@ import RemoveRedEyeOutlinedIcon from "@mui/icons-material/RemoveRedEyeOutlined";
 import AddPhotoAlternateRoundedIcon from "@mui/icons-material/AddPhotoAlternateRounded";
 import WorkOutlineRoundedIcon from "@mui/icons-material/WorkOutlineRounded";
 import LoadingScreen from "../components/LoadingScreen";
-import { Typography } from '@mui/material';
+import { Typography } from "@mui/material";
+
+const MAX_AVATAR_BYTES = 5 * 1024 * 1024;
+const ALLOWED_AVATAR_TYPES = ["image/jpeg", "image/png", "image/gif"];
+const MAX_TEXT_FIELD_LENGTH = 60;
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+type FieldName = "displayName" | "profession" | "email" | "password" | "avatar";
+type FieldErrors = Partial<Record<FieldName, string>>;
+
+interface FormState {
+  displayName: string;
+  profession: string;
+  email: string;
+  password: string;
+}
+
+const initialForm: FormState = {
+  displayName: "",
+  profession: "",
+  email: "",
+  password: "",
+};
+
+function getRegisterErrorMessage(error: unknown): string {
+  if (error instanceof FirebaseError) {
+    switch (error.code) {
+      case "auth/email-already-in-use":
+        return "An account with this email already exists.";
+      case "auth/weak-password":
+        return "Password is too weak. Use at least 6 characters.";
+      case "auth/network-request-failed":
+        return "Network error. Check your connection and try again.";
+      default:
+        return "Registration failed. Please try again.";
+    }
+  }
+  return "Registration failed. Please try again.";
+}
+
+function validateField(name: FieldName, form: FormState, avatar: File | null): string | undefined {
+  switch (name) {
+    case "displayName":
+      if (!form.displayName.trim()) return "Display name is required.";
+      if (form.displayName.length > MAX_TEXT_FIELD_LENGTH)
+        return `Must be under ${MAX_TEXT_FIELD_LENGTH} characters.`;
+      return undefined;
+    case "profession":
+      if (!form.profession.trim()) return "Profession is required.";
+      if (form.profession.length > MAX_TEXT_FIELD_LENGTH)
+        return `Must be under ${MAX_TEXT_FIELD_LENGTH} characters.`;
+      return undefined;
+    case "email":
+      if (!form.email.trim()) return "Email is required.";
+      if (!EMAIL_PATTERN.test(form.email)) return "Enter a valid email address.";
+      return undefined;
+    case "password":
+      if (!form.password) return "Password is required.";
+      if (form.password.length < 6) return "Use at least 6 characters.";
+      return undefined;
+    case "avatar":
+      if (!avatar) return "Please choose an avatar image.";
+      if (!ALLOWED_AVATAR_TYPES.includes(avatar.type))
+        return "Use a JPG, PNG, or GIF file.";
+      if (avatar.size > MAX_AVATAR_BYTES) return "Must be smaller than 5MB.";
+      return undefined;
+  }
+}
 
 const Register: React.FC = () => {
+  const [form, setForm] = useState<FormState>(initialForm);
+  const [avatar, setAvatar] = useState<File | null>(null);
+  const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+  const [touched, setTouched] = useState<Partial<Record<FieldName, boolean>>>({});
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
 
+  const avatarInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    return () => {
+      if (avatarPreviewUrl) URL.revokeObjectURL(avatarPreviewUrl);
+    };
+  }, [avatarPreviewUrl]);
 
   const togglePasswordVisibility = useCallback(() => {
     setIsPasswordVisible((prev) => !prev);
   }, []);
 
-  const handleRegister = useCallback(async (e: React.FormEvent) => {
-    e.preventDefault();
+  const runValidation = useCallback(
+    (name: FieldName, nextForm: FormState, nextAvatar: File | null) => {
+      const message = validateField(name, nextForm, nextAvatar);
+      setFieldErrors((prev) => ({ ...prev, [name]: message }));
+      return message;
+    },
+    []
+  );
 
-    const form = e.currentTarget as HTMLFormElement;
-    const displayName = (form.elements.namedItem("displayName") as HTMLInputElement)?.value;
-    const profession = (form.elements.namedItem("profession") as HTMLInputElement)?.value;
-    const email = (form.elements.namedItem("email") as HTMLInputElement)?.value;
-    const password = (form.elements.namedItem("password") as HTMLInputElement)?.value;
-    const avatarInput = form.elements.namedItem("avatar") as HTMLInputElement;
-    const avatar = avatarInput?.files?.[0];
+  const handleChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const { name, value } = e.target as { name: FieldName; value: string };
+      setForm((prev) => {
+        const next = { ...prev, [name]: value };
+        if (touched[name]) runValidation(name, next, avatar);
+        return next;
+      });
+    },
+    [touched, avatar, runValidation]
+  );
 
-    if (!displayName || !profession || !email || !password || !avatar) {
-      setErrorMessage("All fields are required.");
-      return;
-    }
+  const handleBlur = useCallback(
+    (e: React.FocusEvent<HTMLInputElement>) => {
+      const name = e.target.name as FieldName;
+      setTouched((prev) => ({ ...prev, [name]: true }));
+      runValidation(name, form, avatar);
+    },
+    [form, avatar, runValidation]
+  );
 
-    // Check if the uploaded file is an image
-    const allowedFileTypes = ["image/jpeg", "image/png", "image/gif"];
-    if (!allowedFileTypes.includes(avatar.type)) {
-      setErrorMessage("Please upload a valid image file (jpg, png, or gif).");
-      return;
-    }
+  const handleAvatarChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0] ?? null;
+      setAvatar(file);
+      setTouched((prev) => ({ ...prev, avatar: true }));
+      runValidation("avatar", form, file);
 
-    try {
-      setLoading(true);
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      const user: User = userCredential.user;
+      setAvatarPreviewUrl((prevUrl) => {
+        if (prevUrl) URL.revokeObjectURL(prevUrl);
+        return file ? URL.createObjectURL(file) : null;
+      });
+    },
+    [form, runValidation]
+  );
 
-      // Destination to upload avatars
-      const storageRef = ref(storage, `avatars/${displayName}_${new Date().getTime()}_avatar`);
-      // Upload avatar to the storage
-      const uploadTask = uploadBytesResumable(storageRef, avatar);
+  const handleRegister = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (loading) return;
+      setFormError(null);
 
-      uploadTask.on(
-        "state_changed",
-        () => {},
-        (error) => {
-          console.error("Avatar upload failed:", error.message);
-          setErrorMessage("Avatar upload failed. Please try again.");
-        },
-        async () => {
-          const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-          await updateProfile(user, {
-            displayName,
-            photoURL: downloadURL,
-          });
+      const fields: FieldName[] = [
+        "displayName",
+        "profession",
+        "email",
+        "password",
+        "avatar",
+      ];
+      const nextErrors: FieldErrors = {};
+      fields.forEach((name) => {
+        const message = validateField(name, form, avatar);
+        if (message) nextErrors[name] = message;
+      });
+      setFieldErrors(nextErrors);
+      setTouched({
+        displayName: true,
+        profession: true,
+        email: true,
+        password: true,
+        avatar: true,
+      });
 
-          // Add user information to Firestore "users" collection
-          const usersCollectionRef = doc(db, "users", user.uid);
-          await setDoc(usersCollectionRef, {
-            uid: user.uid,
-            displayName,
-            profession,
-            email,
-            avatarURL: downloadURL,
-            userMetadata: {
-              creationTime: user.metadata.creationTime,
-              lastSignInTime: user.metadata.lastSignInTime,
-            },
-          });
+      if (Object.keys(nextErrors).length > 0 || !avatar) {
+        return;
+      }
 
-          const userChatsCollectionRef = doc(db, "userChats", user.uid);
-          await setDoc(userChatsCollectionRef, {
-            chatIdList: [],
-          });
+      let createdUser: User | null = null;
 
-          // Redirect to the home page after successful operations
-          navigate("/");
+      try {
+        setLoading(true);
+
+        const userCredential = await createUserWithEmailAndPassword(
+          auth,
+          form.email,
+          form.password
+        );
+        createdUser = userCredential.user;
+
+        const storageRef = ref(
+          storage,
+          `avatars/${createdUser.uid}_${Date.now()}`
+        );
+
+        const uploadTask = uploadBytesResumable(storageRef, avatar);
+        const snapshot = await uploadTask;
+        const downloadURL = await getDownloadURL(snapshot.ref);
+
+        await updateProfile(createdUser, {
+          displayName: form.displayName.trim(),
+          photoURL: downloadURL,
+        });
+
+        await setDoc(doc(db, "users", createdUser.uid), {
+          uid: createdUser.uid,
+          displayName: form.displayName.trim(),
+          profession: form.profession.trim(),
+          email: form.email,
+          avatarURL: downloadURL,
+          userMetadata: {
+            creationTime: createdUser.metadata.creationTime,
+            lastSignInTime: createdUser.metadata.lastSignInTime,
+          },
+        });
+
+        await setDoc(doc(db, "userChats", createdUser.uid), {
+          chatIdList: [],
+        });
+
+        navigate("/");
+      } catch (error: unknown) {
+        console.error("Registration failed:", error);
+        setFormError(getRegisterErrorMessage(error));
+
+        if (createdUser) {
+          try {
+            await deleteUser(createdUser);
+          } catch (cleanupError) {
+            console.error("Failed to clean up orphaned account:", cleanupError);
+          }
         }
-      );
-    } catch (error) {
-      console.error("Registration failed:", error.message);
-      setErrorMessage("Registration failed. Please try again.");
-      setLoading(false);
-    }
-  }, [navigate]);
+
+        setLoading(false);
+      }
+    },
+    [form, avatar, navigate, loading]
+  );
 
   if (loading) {
     return <LoadingScreen />;
   }
 
+  // Small helper to keep aria-describedby wiring consistent and to
+  const describedBy = (name: FieldName, hintId?: string) =>
+    [hintId, fieldErrors[name] ? `${name}-error` : undefined]
+      .filter(Boolean)
+      .join(" ") || undefined;
+
   return (
     <div className="registerForm">
       <div className="logo">
         <h1>
-          Chat<span>Now</span>
+          {APP_NAME.charAt(0)}
+          <span>{APP_NAME.slice(1)}</span>
         </h1>
-        <img src={logo} alt="ChatNow logo" />
+        <img src={logo} alt={`${APP_NAME} logo`} />
       </div>
       <div className="heading">
         <h3>
-          <span>Sign up</span> to get started with ChatNow!
+          <span>Sign up</span> to get started with {APP_NAME}!
         </h3>
       </div>
-      <form onSubmit={handleRegister}>
-        {/* displayName Input */}
-        <div className="formGroup">
-          <label htmlFor="displayName">Display Name</label>
-          <div className="inputGroup">
-            <AccountCircleOutlinedIcon className="inputIcon" />
-            <input
-              type="text"
-              id="displayName"
-              name="displayName"
-              autoComplete="off"
-              placeholder="Your Display Name"
-              required
-            />
+      <form onSubmit={handleRegister} noValidate>
+        <div className="formRow">
+          <div className={`formGroup${fieldErrors.displayName ? " hasError" : ""}`}>
+            <label htmlFor="displayName">Display Name</label>
+            <div className="inputGroup">
+              <AccountCircleOutlinedIcon className="inputIcon" aria-hidden="true" />
+              <input
+                type="text"
+                id="displayName"
+                name="displayName"
+                autoComplete="off"
+                placeholder="Your Display Name"
+                maxLength={MAX_TEXT_FIELD_LENGTH}
+                value={form.displayName}
+                onChange={handleChange}
+                onBlur={handleBlur}
+                aria-invalid={Boolean(fieldErrors.displayName)}
+                aria-describedby={describedBy("displayName")}
+              />
+            </div>
+            {fieldErrors.displayName && (
+              <span className="fieldError" id="displayName-error" role="alert">
+                {fieldErrors.displayName}
+              </span>
+            )}
+          </div>
+
+          <div className={`formGroup${fieldErrors.profession ? " hasError" : ""}`}>
+            <label htmlFor="profession">Profession</label>
+            <div className="inputGroup">
+              <WorkOutlineRoundedIcon className="inputIcon" aria-hidden="true" />
+              <input
+                type="text"
+                id="profession"
+                name="profession"
+                autoComplete="off"
+                placeholder="Your Profession"
+                maxLength={MAX_TEXT_FIELD_LENGTH}
+                value={form.profession}
+                onChange={handleChange}
+                onBlur={handleBlur}
+                aria-invalid={Boolean(fieldErrors.profession)}
+                aria-describedby={describedBy("profession")}
+              />
+            </div>
+            {fieldErrors.profession && (
+              <span className="fieldError" id="profession-error" role="alert">
+                {fieldErrors.profession}
+              </span>
+            )}
           </div>
         </div>
 
-        {/* Profession Input */}
-        <div className="formGroup">
-          <label htmlFor="profession">Profession</label>
-          <div className="inputGroup">
-            <WorkOutlineRoundedIcon className="inputIcon" />
-            <input
-              type="text"
-              id="profession"
-              name="profession"
-              autoComplete="off"
-              placeholder="Your Profession"
-              required
-            />
-          </div>
-        </div>
-
-        {/* Email Input */}
-        <div className="formGroup">
+        <div className={`formGroup${fieldErrors.email ? " hasError" : ""}`}>
           <label htmlFor="email">Email</label>
           <div className="inputGroup">
-            <MailOutlineRoundedIcon className="inputIcon" />
+            <MailOutlineRoundedIcon className="inputIcon" aria-hidden="true" />
             <input
               type="email"
               id="email"
               name="email"
               placeholder="name@example.com"
               autoComplete="email"
-              required
+              value={form.email}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              aria-invalid={Boolean(fieldErrors.email)}
+              aria-describedby={describedBy("email")}
             />
           </div>
+          {fieldErrors.email && (
+            <span className="fieldError" id="email-error" role="alert">
+              {fieldErrors.email}
+            </span>
+          )}
         </div>
 
-        {/* Password Input */}
-        <div className="formGroup">
+        <div className={`formGroup${fieldErrors.password ? " hasError" : ""}`}>
           <label htmlFor="password">Password</label>
           <div className="inputGroup">
-            <HttpsOutlinedIcon className="inputIcon" />
+            <HttpsOutlinedIcon className="inputIcon" aria-hidden="true" />
             <input
               type={isPasswordVisible ? "text" : "password"}
               id="password"
               name="password"
               placeholder="********"
-              required
+              minLength={6}
               autoComplete="new-password"
+              value={form.password}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              aria-invalid={Boolean(fieldErrors.password)}
+              aria-describedby={describedBy("password", "password-hint")}
             />
             <button
               type="button"
@@ -189,34 +375,77 @@ const Register: React.FC = () => {
               onClick={togglePasswordVisibility}
             >
               {isPasswordVisible ? (
-                <VisibilityOffOutlinedIcon className="inputIcon" />
+                <VisibilityOffOutlinedIcon className="inputIcon" aria-hidden="true" />
               ) : (
-                <RemoveRedEyeOutlinedIcon className="inputIcon" />
+                <RemoveRedEyeOutlinedIcon className="inputIcon" aria-hidden="true" />
               )}
             </button>
           </div>
+          {fieldErrors.password ? (
+            <span className="fieldError" id="password-error" role="alert">
+              {fieldErrors.password}
+            </span>
+          ) : (
+            <span id="password-hint" className="fieldHint">
+              At least 6 characters.
+            </span>
+          )}
         </div>
 
-        {/* Avatar Input*/}
-        <div className="formGroup">
+        <div className={`formGroup${fieldErrors.avatar ? " hasError" : ""}`}>
           <label htmlFor="avatar">Avatar</label>
-          <div className="inputGroup">
-            <AddPhotoAlternateRoundedIcon className="inputIcon" />
-            <input type="file" id="avatar" name="avatar" accept="image/*" required />
+          <div className="avatarPicker">
+            {avatarPreviewUrl ? (
+              <img src={avatarPreviewUrl} alt="" className="avatarPreview" />
+            ) : (
+              <span className="avatarPreview avatarPreview--empty" aria-hidden="true">
+                <AddPhotoAlternateRoundedIcon />
+              </span>
+            )}
+            <div className="avatarPickerControls">
+              <button
+                type="button"
+                className="avatarPickerButton"
+                onClick={() => avatarInputRef.current?.click()}
+              >
+                {avatar ? "Change image" : "Choose image"}
+              </button>
+              {avatar && (
+                <span className="avatarFileName">{avatar.name}</span>
+              )}
+              <input
+                ref={avatarInputRef}
+                type="file"
+                id="avatar"
+                name="avatar"
+                className="visuallyHidden"
+                accept="image/png, image/jpeg, image/gif"
+                onChange={handleAvatarChange}
+                aria-describedby={describedBy("avatar", "avatar-hint")}
+              />
+            </div>
           </div>
+          {fieldErrors.avatar ? (
+            <span className="fieldError" id="avatar-error" role="alert">
+              {fieldErrors.avatar}
+            </span>
+          ) : (
+            <span id="avatar-hint" className="fieldHint">
+              JPG, PNG, or GIF, up to 5MB.
+            </span>
+          )}
         </div>
 
-        {errorMessage && (
-          <div className="error-message">
-            <Typography color="error">{errorMessage}</Typography>
+        {formError && (
+          <div className="error-message" id="register-error" role="alert" aria-live="polite">
+            <Typography color="error">{formError}</Typography>
           </div>
         )}
 
-        <button className="formButton" type="submit">
+        <button className="formButton" type="submit" disabled={loading}>
           Sign up
         </button>
 
-        {/* Already have an account Link */}
         <span>
           Already have an account? <Link to="/login">Sign in</Link>
         </span>
