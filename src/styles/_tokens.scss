@@ -1,0 +1,31 @@
+@use "sass:color";
+
+$font-family: "Poppins", sans-serif;
+
+$primary-color: #9474f4;
+$primary-color-dark: #7247f3;
+$primary-color-dark-hover: color.adjust($primary-color-dark, $lightness: -8%);
+$primary-color-text: color.adjust($primary-color, $lightness: -18%);
+
+$grey: #5e5e5e;
+$grey-light: color.adjust($grey, $lightness: 20%);
+$white: #fff;
+
+$accent-color-1: #f3f3f9;
+$accent-color-2: #f2efff;
+$accent-color-2-hover: color.adjust($accent-color-2, $lightness: -6%);
+$accent-color-3: #f4f4fa;
+
+$online-color: #1a9c4a;
+$offline-color: #d1352b;
+$error-color: #c0392b;
+
+// Shared shape scale so radii stop being random per-component numbers
+$radius-lg: 28px;
+$radius-md: 18px;
+$radius-full: 999px;
+
+@mixin focus-ring {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba($primary-color, 0.45);
+}

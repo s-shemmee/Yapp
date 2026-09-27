@@ -1,21 +1,18 @@
-@import url("https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
+@use "./styles/tokens" as *;
 
-$font-family: "Poppins", sans-serif;
-$primary-color: #9474f4;
-$primary-color-dark: #7247f3;
-$grey: #5e5e5e;
-$white: #fff;
-$accent-color-1: #f3f3f9; // Background color for forms
-$accent-color-2: #f2efff; // Background color for chats
-$accent-color-3: #f4f4fa; // Background color for chat main section
-$online-color: #00ff00; // Online status color
-$offline-color: #ff0000; // Offline status color
-$background-gradient: radial-gradient(at 62% 31%,hsla(236, 90%, 67%, 1) 0px,  transparent 50%), radial-gradient(at 95% 77%, hsla(354, 66%, 72%, 1) 0px, transparent 50%), radial-gradient(at 61% 42%, hsla(21, 91%, 65%, 1) 0px, transparent 50%), radial-gradient(at 97% 38%, hsla(227, 97%, 73%, 1) 0px, transparent 50%), radial-gradient(at 90% 9%, hsla(222, 90%, 63%, 1) 0px, transparent 50%), radial-gradient(at 87% 15%, hsla(238, 95%, 75%, 1) 0px, transparent 50%), radial-gradient(at 12% 83%, hsla(355, 99%, 62%, 1) 0px, transparent 50%);
+@import url("https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap");
 
 :root {
   font-family: $font-family;
   background-color: #c999ff;
-  background-image: $background-gradient;
+  background-image: radial-gradient(at 62% 31%, hsla(236, 90%, 67%, 1) 0px, transparent 50%),
+    radial-gradient(at 95% 77%, hsla(354, 66%, 72%, 1) 0px, transparent 50%),
+    radial-gradient(at 61% 42%, hsla(21, 91%, 65%, 1) 0px, transparent 50%),
+    radial-gradient(at 97% 38%, hsla(227, 97%, 73%, 1) 0px, transparent 50%),
+    radial-gradient(at 90% 9%, hsla(222, 90%, 63%, 1) 0px, transparent 50%),
+    radial-gradient(at 87% 15%, hsla(238, 95%, 75%, 1) 0px, transparent 50%),
+    radial-gradient(at 12% 83%, hsla(355, 99%, 62%, 1) 0px, transparent 50%);
+  background-attachment: fixed;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -29,221 +26,21 @@ $background-gradient: radial-gradient(at 62% 31%,hsla(236, 90%, 67%, 1) 0px,  tr
   font-family: $font-family;
 }
 
-body {
-  height: 100vh;
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
 }
 
-.loginForm,
-.registerForm {
+body {
+  min-height: 100dvh;
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-direction: column;
-  padding: 30px 10px;
-  width: 500px;
-  background-color: $accent-color-1;
-  border-radius: 30px;
-  box-shadow: 0 0 10px 0 rgba(0, 0, 0, 0.5);
-  overflow: hidden;
-
-  .logo {
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    justify-content: center;
-
-    img {
-      height: 40px;
-      margin-bottom: 50px;
-      margin-left: 10px;
-    }
-
-    h1 {
-      font-size: 3rem;
-      font-weight: 700;
-      color: #333;
-
-      span {
-        color: $primary-color;
-      }
-    }
-  }
-
-  .heading {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    margin-bottom: 30px;
-
-    h3 {
-      font-size: 1.1rem;
-      font-weight: 500;
-      color: $grey;
-
-      span {
-        color: $primary-color;
-      }
-    }
-  }
-
-  form {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    width: 100%;
-
-    .formGroup {
-      display: flex;
-      flex-direction: column;
-      align-items: flex-start;
-      justify-content: center;
-      width: 80%;
-      margin-bottom: 20px;
-      background-color: $white;
-      border-radius: 20px;
-      padding: 15px;
-
-      label {
-        font-size: 1rem;
-        font-weight: 500;
-        color: $grey;
-        margin-bottom: 10px;
-        text-align: left;
-      }
-
-      .inputGroup {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 100%;
-        border: none;
-        outline: none;
-        background-color: transparent;
-
-        input {
-          width: 100%;
-          border: none;
-          outline: none;
-          font-size: 1rem;
-          font-weight: 400;
-          color: $grey;
-          background-color: transparent;
-          margin-left: 10px;
-
-          &::placeholder {
-            font-size: 1rem;
-            font-weight: 400;
-            color: $grey;
-            font-style: italic;
-          }
-        }
-
-        .inputIcon {
-          font-size: 1rem;
-          color: $primary-color;
-        }
-
-        .show_hide {
-          background: none;
-          border: none;
-          color: $primary-color;
-          font-size: 1rem;
-          font-weight: 500;
-          cursor: pointer;
-          transition: color 0.3s ease-in-out;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          padding: 10px;
-
-          &:hover {
-            color: $primary-color-dark;
-          }
-
-          &:focus {
-            outline: none;
-          }
-        }
-      }
-    }
-
-    .remember_forget {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      width: 80%;
-      margin-bottom: 20px;
-
-      .remember {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex-direction: row;
-        gap: 5px;
-
-        label {
-          font-size: 1rem;
-          font-weight: 500;
-          color: $grey;
-        }
-      }
-
-      .forget {
-        font-size: 1rem;
-        font-weight: 500;
-        color: $primary-color;
-        cursor: pointer;
-        transition: all 0.3s ease-in-out;
-        text-decoration: none;
-
-        &:hover {
-          color: $primary-color-dark;
-        }
-      }
-    }
-
-    .formButton {
-      width: 80%;
-      border: none;
-      outline: none;
-      background-color: $primary-color;
-      color: #fafafa;
-      font-size: 1.2rem;
-      font-weight: 600;
-      padding: 1rem;
-      border-radius: 30px;
-      cursor: pointer;
-      transition: all 0.3s ease-in-out;
-      margin: 20px 0;
-
-      &:hover {
-        background-color: #8965f5;
-      }
-    }
-
-    span {
-      font-size: 1rem;
-      font-weight: 400;
-      color: $grey;
-      margin-top: 10px;
-
-      a {
-        color: $primary-color;
-        text-decoration: none;
-        font-weight: 500;
-
-        &:hover {
-          text-decoration: none;
-        }
-      }
-    }
-  }
+  padding: 24px 16px;
 }
 
 .home {
