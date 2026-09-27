@@ -1,0 +1,241 @@
+@use "../styles/tokens" as *;
+
+.loginForm {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  padding: 32px 20px;
+  width: min(460px, 100%);
+  background-color: $accent-color-1;
+  border-radius: $radius-lg;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+
+  .logo {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+
+    img {
+      height: 36px;
+      margin-bottom: 40px;
+    }
+
+    h1 {
+      font-size: clamp(2rem, 6vw, 3rem);
+      font-weight: 700;
+      color: #333;
+
+      span {
+        color: $primary-color-text;
+      }
+    }
+  }
+
+  .heading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 28px;
+    text-align: center;
+
+    h3 {
+      font-size: 1.05rem;
+      font-weight: 500;
+      color: $grey;
+
+      span {
+        color: $primary-color-text;
+      }
+    }
+  }
+
+  form {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+
+    .formGroup {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      justify-content: center;
+      width: 100%;
+      margin-bottom: 18px;
+      background-color: $white;
+      border-radius: $radius-md;
+      padding: 14px 16px;
+
+      label {
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: $grey;
+        margin-bottom: 8px;
+        text-align: left;
+      }
+
+      .inputGroup {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        background-color: transparent;
+
+        input {
+          width: 100%;
+          border: none;
+          outline: none;
+          font-size: 1rem;
+          font-weight: 400;
+          color: #222;
+          background-color: transparent;
+          margin-left: 10px;
+
+          &::placeholder {
+            font-weight: 400;
+            color: $grey-light;
+            font-style: normal;
+          }
+        }
+
+        .inputIcon {
+          font-size: 1.15rem;
+          color: $primary-color-text;
+          flex-shrink: 0;
+        }
+
+        .show_hide {
+          background: none;
+          border: none;
+          border-radius: 8px;
+          color: $primary-color-text;
+          cursor: pointer;
+          transition: color 0.2s ease-in-out;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 8px;
+
+          &:hover {
+            color: $primary-color-dark;
+          }
+
+          &:focus-visible {
+            @include focus-ring;
+          }
+        }
+      }
+    }
+
+    .fieldHint {
+      display: block;
+      font-size: 0.8rem;
+      color: $grey-light;
+      align-self: flex-start;
+    }
+
+    .remember_forget {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      width: 100%;
+      margin-bottom: 18px;
+
+      .remember {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+
+        label {
+          font-size: 0.95rem;
+          font-weight: 500;
+          color: $grey;
+        }
+      }
+
+      .forget {
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: $primary-color-text;
+        text-decoration: none;
+        border-radius: 4px;
+
+        &:hover {
+          color: $primary-color-dark;
+          text-decoration: underline;
+        }
+
+        &:focus-visible {
+          @include focus-ring;
+        }
+      }
+    }
+
+    .formButton {
+      width: 100%;
+      border: none;
+      background-color: $primary-color-dark;
+      color: #fff;
+      font-size: 1.1rem;
+      font-weight: 600;
+      padding: 0.9rem;
+      border-radius: $radius-full;
+      cursor: pointer;
+      transition: background-color 0.2s ease-in-out;
+      margin: 12px 0;
+
+      &:hover {
+        background-color: $primary-color-dark-hover;
+      }
+
+      &:focus-visible {
+        @include focus-ring;
+      }
+
+      &:disabled {
+        opacity: 0.7;
+        cursor: not-allowed;
+      }
+    }
+
+    span {
+      font-size: 0.95rem;
+      color: $grey;
+      margin-top: 4px;
+      text-align: center;
+
+      a {
+        color: $primary-color-text;
+        text-decoration: none;
+        font-weight: 600;
+        border-radius: 4px;
+
+        &:hover {
+          text-decoration: underline;
+        }
+
+        &:focus-visible {
+          @include focus-ring;
+        }
+      }
+    }
+  }
+}
+
+@media (max-width: 420px) {
+  .loginForm {
+    padding: 24px 14px;
+
+    .logo img {
+      height: 30px;
+      margin-bottom: 28px;
+    }
+  }
+}

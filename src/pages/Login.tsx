@@ -1,9 +1,17 @@
 import React, { useState, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import logo from "../assets/logo.png";
+import "./Login.scss";
+import { APP_NAME } from "../constants";
 import { auth, db } from "../firebase";
 import { doc, updateDoc, getDoc } from "firebase/firestore";
-import { signInWithEmailAndPassword } from "firebase/auth";
+import {
+  signInWithEmailAndPassword,
+  setPersistence,
+  browserLocalPersistence,
+  browserSessionPersistence,
+} from "firebase/auth";
+import { FirebaseError } from "firebase/app";
 import MailOutlineRoundedIcon from "@mui/icons-material/MailOutlineRounded";
 import HttpsOutlinedIcon from "@mui/icons-material/HttpsOutlined";
 import VisibilityOffOutlinedIcon from "@mui/icons-material/VisibilityOffOutlined";
@@ -11,6 +19,24 @@ import RemoveRedEyeOutlinedIcon from "@mui/icons-material/RemoveRedEyeOutlined";
 import Checkbox from "@mui/material/Checkbox";
 import { Typography } from "@mui/material";
 import LoadingScreen from "../components/LoadingScreen";
+
+const PRIMARY = "#9474f4";
+
+function getLoginErrorMessage(error: unknown): string {
+  if (error instanceof FirebaseError) {
+    switch (error.code) {
+      case "auth/too-many-requests":
+        return "Too many attempts. Please wait a moment and try again.";
+      case "auth/network-request-failed":
+        return "Network error. Check your connection and try again.";
+      case "auth/user-disabled":
+        return "This account has been disabled. Contact support if you think this is a mistake.";
+      default:
+        return "Invalid email or password. Please try again.";
+    }
+  }
+  return "Something went wrong. Please try again.";
+}
 
 const Login: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -29,53 +55,67 @@ const Login: React.FC = () => {
     setIsPasswordVisible((prev) => !prev);
   }, []);
 
-  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData((prev) => ({
-      ...prev,
-      [e.target.name]: e.target.value,
-    }));
-  }, []);
+  const handleInputChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const { name, value, type, checked } = e.target;
+      setFormData((prev) => ({
+        ...prev,
+        [name]: type === "checkbox" ? checked : value,
+      }));
+    },
+    []
+  );
 
-  const handleLogin = useCallback(async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleLogin = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (loading) return;
+      setErrorMessage(null);
 
-    try {
-      setLoading(true);
-
-      const { email, password } = formData;
+      const { email, password, rememberMe } = formData;
 
       if (!email || !password) {
         setErrorMessage("Please enter both email and password.");
-        setLoading(false);
         return;
       }
 
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
+      try {
+        setLoading(true);
 
-      const usersCollectionRef = doc(db, "users", user.uid);
-      const userDoc = await getDoc(usersCollectionRef);
+        await setPersistence(
+          auth,
+          rememberMe ? browserLocalPersistence : browserSessionPersistence
+        );
 
-      if (userDoc.exists()) {
-          // Document exists, update it
-        await updateDoc(usersCollectionRef, {
-          userMetadata: {
-            creationTime: user.metadata.creationTime,
-            lastSignInTime: user.metadata.lastSignInTime,
-          },
-        });
-      } else {
-        console.error("User document does not exist:", user.uid);
+        const userCredential = await signInWithEmailAndPassword(
+          auth,
+          email,
+          password
+        );
+        const user = userCredential.user;
+
+        const usersDocRef = doc(db, "users", user.uid);
+        const userDoc = await getDoc(usersDocRef);
+
+        if (userDoc.exists()) {
+          await updateDoc(usersDocRef, {
+            userMetadata: {
+              creationTime: user.metadata.creationTime,
+              lastSignInTime: user.metadata.lastSignInTime,
+            },
+          });
+        } else {
+          console.error("User document does not exist:", user.uid);
+        }
+
+        navigate("/");
+      } catch (error: unknown) {
+        setErrorMessage(getLoginErrorMessage(error));
+        setLoading(false);
       }
-
-      // Redirect to the home page
-      navigate("/");
-    } catch (error) {
-      setErrorMessage("Invalid email or password. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  }, [formData, navigate]);
+    },
+    [formData, navigate, loading]
+  );
 
   if (loading) {
     return <LoadingScreen />;
@@ -85,21 +125,21 @@ const Login: React.FC = () => {
     <div className="loginForm">
       <div className="logo">
         <h1>
-          Chat<span>Now</span>
+          {APP_NAME.charAt(0)}
+          <span>{APP_NAME.slice(1)}</span>
         </h1>
-        <img src={logo} alt="ChatNow logo" />
+        <img src={logo} alt={`${APP_NAME} logo`} />
       </div>
       <div className="heading">
         <h3>
           Welcome back! Please <span>sign in</span> to your account.
         </h3>
       </div>
-      <form onSubmit={handleLogin}>
-        {/* Email Input */}
+      <form onSubmit={handleLogin} noValidate>
         <div className="formGroup">
           <label htmlFor="email">Email</label>
           <div className="inputGroup">
-            <MailOutlineRoundedIcon className="inputIcon" />
+            <MailOutlineRoundedIcon className="inputIcon" aria-hidden="true" />
             <input
               type="email"
               id="email"
@@ -108,16 +148,16 @@ const Login: React.FC = () => {
               placeholder="name@example.com"
               value={formData.email}
               required
+              aria-describedby={errorMessage ? "login-error" : undefined}
               onChange={handleInputChange}
             />
           </div>
         </div>
 
-        {/* Password Input */}
         <div className="formGroup">
           <label htmlFor="password">Password</label>
           <div className="inputGroup">
-            <HttpsOutlinedIcon className="inputIcon" />
+            <HttpsOutlinedIcon className="inputIcon" aria-hidden="true" />
             <input
               type={isPasswordVisible ? "text" : "password"}
               id="password"
@@ -126,6 +166,7 @@ const Login: React.FC = () => {
               placeholder="********"
               value={formData.password}
               required
+              aria-describedby={errorMessage ? "login-error" : undefined}
               onChange={handleInputChange}
             />
             <button
@@ -135,45 +176,46 @@ const Login: React.FC = () => {
               onClick={togglePasswordVisibility}
             >
               {isPasswordVisible ? (
-                <VisibilityOffOutlinedIcon className="inputIcon" />
+                <VisibilityOffOutlinedIcon className="inputIcon" aria-hidden="true" />
               ) : (
-                <RemoveRedEyeOutlinedIcon className="inputIcon" />
+                <RemoveRedEyeOutlinedIcon className="inputIcon" aria-hidden="true" />
               )}
             </button>
           </div>
         </div>
 
-        {/* Remember Me & Forget Password */}
         <div className="remember_forget">
           <div className="remember">
             <Checkbox
+              id="rememberMe"
+              name="rememberMe"
               checked={formData.rememberMe}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, rememberMe: e.target.checked }))
-              }
+              onChange={handleInputChange}
+              inputProps={{ "aria-label": "Remember me" }}
+              sx={{
+                color: PRIMARY,
+                "&.Mui-checked": { color: PRIMARY },
+              }}
             />
-            <span>Remember me</span>
+            <label htmlFor="rememberMe">Remember me</label>
           </div>
           <Link to="/forgot-password" className="forget">
-            Forget password?
+            Forgot password?
           </Link>
         </div>
 
-        {/* Error Message */}
         {errorMessage && (
-          <div className="error-message">
+          <div className="error-message" id="login-error" role="alert" aria-live="polite">
             <Typography color="error">{errorMessage}</Typography>
           </div>
         )}
 
-        {/* Submit Button */}
-        <button className="formButton" type="submit">
+        <button className="formButton" type="submit" disabled={loading}>
           Sign in
         </button>
 
-        {/* Sign Up Link */}
         <span>
-          Don’t have an account yet? <Link to="/register">Sign up</Link>
+          Don&rsquo;t have an account yet? <Link to="/register">Sign up</Link>
         </span>
       </form>
     </div>
