@@ -1,0 +1,117 @@
+@use "../styles/tokens" as *;
+
+.chatHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  min-height: 80px;
+  background-color: $white;
+  border-radius: $radius-md;
+  padding: 10px 16px;
+
+  .chatUser {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-direction: row;
+    min-width: 0;
+
+    .chatImg {
+      width: 52px;
+      height: 52px;
+      flex-shrink: 0;
+      border-radius: 50%;
+      border: 2px solid $primary-color;
+      object-fit: cover;
+      transition: border-color 0.2s ease-in-out;
+
+      &[data-online="true"] {
+        border-color: $online-color;
+      }
+
+      &[data-online="false"] {
+        border-color: $offline-color;
+      }
+    }
+
+    .chatInfo {
+      display: flex;
+      justify-content: center;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 0;
+
+      .chatName {
+        font-size: 1rem;
+        font-weight: 600;
+        color: $primary-color-text;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .chatStatus {
+        font-size: 0.8rem;
+        font-weight: 500;
+        color: $grey;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+    }
+  }
+
+  .chatActions {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    flex-shrink: 0;
+
+    .MuiIconButton-root {
+      color: $primary-color;
+
+      &:not(.Mui-disabled):hover,
+      &:not(.Mui-disabled):focus-visible {
+        color: $primary-color-dark;
+      }
+
+      &.Mui-disabled {
+        color: $grey-light;
+      }
+
+      &:focus-visible {
+        @include focus-ring;
+      }
+    }
+
+    .infoIcon {
+      transition: color 0.2s ease-in-out;
+    }
+  }
+}
+
+@media (max-width: 420px) {
+  .chatHeader {
+    padding: 8px 10px;
+    min-height: 64px;
+
+    .chatUser .chatImg {
+      width: 40px;
+      height: 40px;
+    }
+
+    .chatUser .chatInfo .chatStatus {
+      display: none;
+    }
+
+    .chatActions {
+      gap: 0;
+
+      .MuiIconButton-root {
+        padding: 6px;
+      }
+    }
+  }
+}

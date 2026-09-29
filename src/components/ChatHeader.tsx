@@ -3,9 +3,7 @@ import { getDoc, doc } from "firebase/firestore";
 import { db } from "../firebase";
 import { ChatContext } from "../context/ChatContext";
 import FlagOutlinedIcon from "@mui/icons-material/FlagOutlined";
-import FlagIcon from "@mui/icons-material/Flag";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
-import InfoIcon from "@mui/icons-material/Info";
 import MoreVertOutlinedIcon from "@mui/icons-material/MoreVertOutlined";
 import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
@@ -20,78 +18,67 @@ import {
   Typography,
 } from "@mui/material";
 import { formatDistanceToNow, format } from "date-fns";
+import "./ChatHeader.scss";
+
+const PRIMARY = "#9474f4";
+const GREY = "#5e5e5e";
 
 const ChatHeader: React.FC = () => {
   const { state } = useContext(ChatContext);
   const [chatCreationTime, setChatCreationTime] = useState<string | null>(null);
-  const [isFlagFilled, setIsFlagFilled] = useState(false);
-  const [isInfoFilled, setIsInfoFilled] = useState(false);
+  const [lastSeenStatus, setLastSeenStatus] = useState<
+    "loading" | "online" | "offline"
+  >("loading");
+  const [lastSeenText, setLastSeenText] = useState("Loading…");
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-
-  const handleFlagClick = () => {
-    setIsFlagFilled(!isFlagFilled);
-  };
-
-  const handleInfoClick = () => {
-    setIsInfoFilled(!isInfoFilled);
-  };
 
   const open = Boolean(anchorEl);
 
-  const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+  const handleMenuOpen = (event: React.MouseEvent<HTMLButtonElement>) => {
     setAnchorEl(event.currentTarget);
   };
 
-  const handleClose = () => {
+  const handleMenuClose = () => {
     setAnchorEl(null);
   };
 
-  // Fetch the last sign-in time of the user
   const fetchLastSignInTime = useCallback(async () => {
     try {
       const userDoc = await getDoc(doc(db, "users", state.user.uid));
-      const lastSignInTime = userDoc.data()?.userMetadata.lastSignInTime;
-      const onlineStatus = userDoc.data()?.online ? "Online" : "Offline";
+      const data = userDoc.data();
+      const isOnline = Boolean(data?.online);
+      const lastSignInTime = data?.userMetadata?.lastSignInTime;
 
-      if (onlineStatus === "Online") {
-        return onlineStatus;
+      if (isOnline) {
+        setLastSeenStatus("online");
+        setLastSeenText("Online");
+        return;
       }
 
+      setLastSeenStatus("offline");
       if (lastSignInTime) {
         const distance = formatDistanceToNow(new Date(lastSignInTime), {
           addSuffix: true,
         });
-        return `${onlineStatus} - Last seen ${distance}`;
+        setLastSeenText(`Offline · Last seen ${distance}`);
       } else {
-        return "Unavailable";
+        setLastSeenText("Offline");
       }
     } catch (error) {
       console.error("Error fetching lastSignInTime:", error);
-      return "Unavailable";
+      setLastSeenStatus("offline");
+      setLastSeenText("Status unavailable");
     }
   }, [state.user.uid]);
 
-  // Fetch the chat creation time
   const fetchChatCreationTime = useCallback(async () => {
     try {
-      const combinedId = state.chatId;
-      const chatCreationDoc = await getDoc(doc(db, "userChats", state.user.uid));
+      const chatDoc = await getDoc(doc(db, "userChats", state.user.uid));
+      const entry = chatDoc.exists() ? chatDoc.data()[state.chatId] : null;
 
-      if (chatCreationDoc.exists()) {
-        const chatCreationData = chatCreationDoc.data()[combinedId];
-        if (chatCreationData && chatCreationData.date) {
-          const timestamp = chatCreationData.date;
-
-          // Convert Firestore Timestamp to Date
-          const date = timestamp.toDate();
-
-          // Format the date as a string
-          const formattedDate = format(date, "MMMM dd, yyyy h:mm a");
-
-          return formattedDate;
-        }
+      if (entry?.date) {
+        return format(entry.date.toDate(), "MMMM d, yyyy h:mm a");
       }
-
       return null;
     } catch (error) {
       console.error("Error fetching chat creation time:", error);
@@ -99,21 +86,20 @@ const ChatHeader: React.FC = () => {
     }
   }, [state.chatId, state.user.uid]);
 
-  const [lastSeenTime, setLastSeenTime] = useState("Loading...");
-
   useEffect(() => {
-    const fetchData = async () => {
-      const time = await fetchLastSignInTime();
-      setLastSeenTime(time);
+    setLastSeenStatus("loading");
+    setLastSeenText("Loading…");
+    setChatCreationTime(null);
 
-      const chatCreationTime = await fetchChatCreationTime();
-      if (chatCreationTime) {
-        setChatCreationTime(chatCreationTime);
-      }
-    };
+    fetchLastSignInTime();
+    fetchChatCreationTime().then((time) => {
+      if (time) setChatCreationTime(time);
+    });
+  }, [fetchLastSignInTime, fetchChatCreationTime]);
 
-    fetchData();
-  }, [fetchLastSignInTime, fetchChatCreationTime, state.chatId, state.user.uid]);
+  const infoTooltip = chatCreationTime
+    ? `Chat started ${chatCreationTime}`
+    : "Loading chat info…";
 
   return (
     <div className="chatHeader">
@@ -122,101 +108,76 @@ const ChatHeader: React.FC = () => {
           src={state.user.photoURL}
           alt={`${state.user.displayName}'s profile picture`}
           className="chatImg"
-          data-online={lastSeenTime === "Online"}
+          {...(lastSeenStatus !== "loading" && {
+            "data-online": lastSeenStatus === "online",
+          })}
         />
         <div className="chatInfo">
           <h4 className="chatName">{state.user.displayName}</h4>
-          <p className="chatStatus">{lastSeenTime}</p>
+          <p className="chatStatus">{lastSeenText}</p>
         </div>
       </div>
+
       <div className="chatActions">
-        <div
-          className="chatAction"
-          onMouseEnter={() => setIsFlagFilled(true)}
-          onMouseLeave={() => setIsFlagFilled(false)}
-          onClick={handleFlagClick}
-        >
-          {isFlagFilled ? (
-            <IconButton>
-              <Tooltip title="Report">
-                <FlagIcon />
-              </Tooltip>
-            </IconButton>
-          ) : (
-            <IconButton>
+        <Tooltip title="Report (coming soon)">
+          <span>
+            <IconButton disabled aria-label="Report (coming soon)">
               <FlagOutlinedIcon />
             </IconButton>
-          )}
-        </div>
-        <div
-          className="chatAction"
-          onMouseEnter={() => setIsInfoFilled(true)}
-          onMouseLeave={() => setIsInfoFilled(false)}
-          onClick={handleInfoClick}
-        >
-          {isInfoFilled ? (
-            <IconButton>
-              <Tooltip title={`Chat Created at ${chatCreationTime}`} arrow>
-                <InfoIcon />
-              </Tooltip>
-            </IconButton>
-          ) : (
-            <IconButton>
-              <InfoOutlinedIcon />
-            </IconButton>
-          )}
-        </div>
-        <div className="chatAction">
-          <IconButton onClick={handleClick}>
-            <Tooltip title="More">
-              <MoreVertOutlinedIcon />
-            </Tooltip>
+          </span>
+        </Tooltip>
+
+        <Tooltip title={infoTooltip}>
+          <IconButton aria-label={infoTooltip}>
+            <InfoOutlinedIcon className="infoIcon" />
           </IconButton>
-        </div>
+        </Tooltip>
+
+        <Tooltip title="More options">
+          <IconButton
+            onClick={handleMenuOpen}
+            aria-label="More options"
+            aria-haspopup="menu"
+            aria-expanded={open}
+            aria-controls={open ? "chat-header-menu" : undefined}
+          >
+            <MoreVertOutlinedIcon />
+          </IconButton>
+        </Tooltip>
+
         <Menu
-          id="basic-menu"
+          id="chat-header-menu"
           anchorEl={anchorEl}
           open={open}
-          onClose={handleClose}
+          onClose={handleMenuClose}
         >
-          <MenuItem>
+          <MenuItem disabled>
             <ListItemIcon>
-              <NotificationsOffRoundedIcon
-                sx={{ color: "#9474f4", fontSize: "20px" }}
-              />
+              <NotificationsOffRoundedIcon sx={{ color: PRIMARY, fontSize: "20px" }} />
             </ListItemIcon>
             <ListItemText>
-              <Typography
-                variant="body2"
-                sx={{ color: "#5e5e5e", fontSize: "14px", fontWeight: "600" }}
-              >
-                Notifications
+              <Typography variant="body2" sx={{ color: GREY, fontSize: "14px", fontWeight: 600 }}>
+                Notifications (coming soon)
               </Typography>
             </ListItemText>
           </MenuItem>
-          <MenuItem>
+          <MenuItem disabled>
             <ListItemIcon>
-              <ArchiveRoundedIcon sx={{ color: "#9474f4", fontSize: "20px" }} />
+              <ArchiveRoundedIcon sx={{ color: PRIMARY, fontSize: "20px" }} />
             </ListItemIcon>
             <ListItemText>
-              <Typography
-                variant="body2"
-                sx={{ color: "#5e5e5e", fontSize: "14px", fontWeight: "600" }}
-              >
-                Archive
+              <Typography variant="body2" sx={{ color: GREY, fontSize: "14px", fontWeight: 600 }}>
+                Archive (coming soon)
               </Typography>
             </ListItemText>
           </MenuItem>
-          <MenuItem>
+          <MenuItem disabled>
             <ListItemIcon>
-              <BlockRounded sx={{ color: "#9474f4", fontSize: "20px" }} />
+              <BlockRounded sx={{ color: PRIMARY, fontSize: "20px" }} />
             </ListItemIcon>
             <ListItemText>
-              <Typography
-                variant="body2"
-                sx={{ color: "#5e5e5e", fontSize: "14px", fontWeight: "600" }}
-              >
-                Block
+              <Typography variant="body2" sx={{ color: GREY, fontSize: "14px", fontWeight: 600 }}>
+                Block (coming soon)
               </Typography>
             </ListItemText>
           </MenuItem>
