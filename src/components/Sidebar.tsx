@@ -1,5 +1,6 @@
-import React, { useContext } from "react";
+import React, { useCallback, useState } from "react";
 import logo from "../assets/logo.png";
+import { APP_NAME } from "../constants";
 import { auth, db } from "../firebase";
 import { doc, updateDoc } from "firebase/firestore";
 import { signOut } from "firebase/auth";
@@ -10,76 +11,104 @@ import ArchiveRoundedIcon from "@mui/icons-material/ArchiveRounded";
 import SettingsRoundedIcon from "@mui/icons-material/SettingsRounded";
 import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
 import { IconButton, Tooltip } from "@mui/material";
+import "./Sidebar.scss";
 
 interface SidebarProps {
   onHomeClick: () => void;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ onHomeClick }) => {
-  const currentUser = useContext(AuthContext);
+  const currentUser = React.useContext(AuthContext);
   const navigate = useNavigate();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [logoutError, setLogoutError] = useState<string | null>(null);
 
-  const handleLogout = async () => {
+  const handleLogout = useCallback(async () => {
+    if (isLoggingOut) return;
+    setLogoutError(null);
+
     try {
-      // Set the online status to false in Firestore
-      const usersCollectionRef = doc(db, "users", currentUser?.uid || "");
-      await updateDoc(usersCollectionRef, {
-        online: false,
-      });
+      setIsLoggingOut(true);
 
-      // Sign out the user
+      if (currentUser?.uid) {
+        await updateDoc(doc(db, "users", currentUser.uid), {
+          online: false,
+        });
+      }
+
       await signOut(auth);
-
-      // Redirect to the login page after successful logout
       navigate("/login");
     } catch (error) {
-      console.error("Logout failed:", (error as Error).message || "An error occurred");
+      console.error("Logout failed:", (error as Error).message || error);
+      setLogoutError("Couldn't log out. Please try again.");
+      setIsLoggingOut(false);
     }
-  };
+  }, [currentUser, isLoggingOut, navigate]);
 
-  const handleClickHome = () => {
-    onHomeClick(); // Call the onHomeClick callback to clear the selected chat
-  };
+  const handleClickHome = useCallback(() => {
+    onHomeClick();
+  }, [onHomeClick]);
 
   return (
-    <div className="sidebar">
+    <nav className="sidebar" aria-label={`${APP_NAME} navigation`}>
       <div className="logo">
-        <img src={logo} alt="chatNow Logo" />
+        <img src={logo} alt={`${APP_NAME} logo`} />
       </div>
+
       <div className="sidebarMenu">
-        <IconButton onClick={handleClickHome}>
-          <Tooltip title="Home">
-            <HomeRoundedIcon className="sidebarIcon" />
-          </Tooltip>
-        </IconButton>
+        <Tooltip title="Home">
+          <IconButton onClick={handleClickHome} aria-label="Home">
+            <HomeRoundedIcon className="sidebarIcon" aria-hidden="true" />
+          </IconButton>
+        </Tooltip>
 
-        <IconButton>
-          <Tooltip title="Archive">
-            <ArchiveRoundedIcon className="sidebarIcon" />
-          </Tooltip>
-        </IconButton>
+        <Tooltip title="Archive (coming soon)">
+          <span>
+            <IconButton disabled aria-label="Archive (coming soon)">
+              <ArchiveRoundedIcon className="sidebarIcon" aria-hidden="true" />
+            </IconButton>
+          </span>
+        </Tooltip>
 
-        <IconButton>
-          <Tooltip title="Settings">
-            <SettingsRoundedIcon className="sidebarIcon" />
-          </Tooltip>
-        </IconButton>
+        <Tooltip title="Settings (coming soon)">
+          <span>
+            <IconButton disabled aria-label="Settings (coming soon)">
+              <SettingsRoundedIcon className="sidebarIcon" aria-hidden="true" />
+            </IconButton>
+          </span>
+        </Tooltip>
       </div>
 
       <div className="sidebarUser">
-        {currentUser && currentUser.photoURL && (
-          <Tooltip title={currentUser.displayName || "User"}>
-            <img src={currentUser.photoURL} alt="avatarURL" className="userImg" />
+        {currentUser?.photoURL && (
+          <Tooltip title={currentUser.displayName || "You"}>
+            <img
+              src={currentUser.photoURL}
+              alt={`${currentUser.displayName || "Your"} avatar`}
+              className="userImg"
+            />
           </Tooltip>
         )}
 
-        <IconButton onClick={handleLogout}>
-          <Tooltip title="Logout">
-            <LogoutRoundedIcon className="userSignOut" />
-          </Tooltip>
-        </IconButton>
+        <Tooltip title="Log out">
+          <span>
+            <IconButton
+              onClick={handleLogout}
+              disabled={isLoggingOut}
+              aria-label={isLoggingOut ? "Logging out…" : "Log out"}
+            >
+              <LogoutRoundedIcon className="userSignOut" aria-hidden="true" />
+            </IconButton>
+          </span>
+        </Tooltip>
+
+        {logoutError && (
+          <span className="visuallyHidden" role="alert">
+            {logoutError}
+          </span>
+        )}
       </div>
-    </div>
+    </nav>
   );
 };
 

@@ -1,0 +1,90 @@
+@use "../styles/tokens" as *;
+
+.sidebar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-direction: column;
+  background-color: $white;
+  width: 60px;
+  height: 100%;
+  padding: 20px 5px;
+
+  .logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    img {
+      height: 30px;
+    }
+  }
+
+  .sidebarMenu {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 10px;
+
+    .sidebarIcon {
+      font-size: 1.5rem;
+      color: $primary-color;
+      transition: color 0.2s ease-in-out;
+    }
+
+    .MuiIconButton-root:not(.Mui-disabled):hover .sidebarIcon {
+      color: $primary-color-dark;
+    }
+
+    .MuiIconButton-root.Mui-disabled .sidebarIcon {
+      color: $grey-light;
+    }
+
+    .MuiIconButton-root:focus-visible {
+      @include focus-ring;
+    }
+  }
+
+  .sidebarUser {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 20px;
+
+    .userSignOut {
+      font-size: 1.5rem;
+      color: $primary-color;
+      transition: color 0.2s ease-in-out;
+    }
+
+    .MuiIconButton-root:not(.Mui-disabled):hover .userSignOut {
+      color: $primary-color-dark;
+    }
+
+    .MuiIconButton-root:focus-visible {
+      @include focus-ring;
+    }
+
+    .userImg {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: 2px solid $primary-color;
+      object-fit: cover;
+    }
+  }
+
+  .visuallyHidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+}
