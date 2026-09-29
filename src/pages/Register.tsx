@@ -3,7 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import logo from "../assets/logo.png";
 import "./Register.scss";
 import { APP_NAME } from "../constants";
-import { auth, db, storage } from "../firebase";
+import { auth, db } from "../firebase";
 import {
   createUserWithEmailAndPassword,
   updateProfile,
@@ -11,7 +11,6 @@ import {
   User,
 } from "firebase/auth";
 import { FirebaseError } from "firebase/app";
-import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import { doc, setDoc } from "firebase/firestore";
 import AccountCircleOutlinedIcon from "@mui/icons-material/AccountCircleOutlined";
 import MailOutlineRoundedIcon from "@mui/icons-material/MailOutlineRounded";
@@ -27,6 +26,12 @@ const MAX_AVATAR_BYTES = 5 * 1024 * 1024;
 const ALLOWED_AVATAR_TYPES = ["image/jpeg", "image/png", "image/gif"];
 const MAX_TEXT_FIELD_LENGTH = 60;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// Cloudinary unsigned upload — no secret key on the client, restrictions
+// (format/size, no-overwrite, random public ID) are enforced by the
+// preset configured in the Cloudinary console.
+const CLOUDINARY_CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
+const CLOUDINARY_UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
 
 type FieldName = "displayName" | "profession" | "email" | "password" | "avatar";
 type FieldErrors = Partial<Record<FieldName, string>>;
@@ -58,6 +63,9 @@ function getRegisterErrorMessage(error: unknown): string {
         return "Registration failed. Please try again.";
     }
   }
+  if (error instanceof Error && error.message === "AVATAR_UPLOAD_FAILED") {
+    return "We couldn't upload your avatar. Please try again.";
+  }
   return "Registration failed. Please try again.";
 }
 
@@ -88,6 +96,34 @@ function validateField(name: FieldName, form: FormState, avatar: File | null): s
       if (avatar.size > MAX_AVATAR_BYTES) return "Must be smaller than 5MB.";
       return undefined;
   }
+}
+
+// Uploads directly to Cloudinary from the browser using an unsigned
+// preset. Returns the hosted image URL, or throws AVATAR_UPLOAD_FAILED.
+async function uploadAvatar(file: File): Promise<string> {
+  if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_UPLOAD_PRESET) {
+    console.error(
+      "Missing VITE_CLOUDINARY_CLOUD_NAME or VITE_CLOUDINARY_UPLOAD_PRESET"
+    );
+    throw new Error("AVATAR_UPLOAD_FAILED");
+  }
+
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+  formData.append("folder", "yapp-avatars");
+
+  const response = await fetch(
+    `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
+    { method: "POST", body: formData }
+  );
+
+  if (!response.ok) {
+    throw new Error("AVATAR_UPLOAD_FAILED");
+  }
+
+  const data = await response.json();
+  return data.secure_url as string;
 }
 
 const Register: React.FC = () => {
@@ -201,14 +237,7 @@ const Register: React.FC = () => {
         );
         createdUser = userCredential.user;
 
-        const storageRef = ref(
-          storage,
-          `avatars/${createdUser.uid}_${Date.now()}`
-        );
-
-        const uploadTask = uploadBytesResumable(storageRef, avatar);
-        const snapshot = await uploadTask;
-        const downloadURL = await getDownloadURL(snapshot.ref);
+        const downloadURL = await uploadAvatar(avatar);
 
         await updateProfile(createdUser, {
           displayName: form.displayName.trim(),
@@ -236,6 +265,10 @@ const Register: React.FC = () => {
         console.error("Registration failed:", error);
         setFormError(getRegisterErrorMessage(error));
 
+        // If the auth account was created but a later step (avatar
+        // upload, Firestore write) failed, don't leave an orphaned
+        // account with no profile — remove it so the person can
+        // cleanly retry.
         if (createdUser) {
           try {
             await deleteUser(createdUser);
@@ -254,7 +287,6 @@ const Register: React.FC = () => {
     return <LoadingScreen />;
   }
 
-  // Small helper to keep aria-describedby wiring consistent and to
   const describedBy = (name: FieldName, hintId?: string) =>
     [hintId, fieldErrors[name] ? `${name}-error` : undefined]
       .filter(Boolean)
