@@ -25,5 +25,10 @@ dist-ssr
 
 # .gitignore
 .env
+.env.local
 
 .vercel
+
+.firebase/
+firebase-debug.log
+firestore-debug.log
