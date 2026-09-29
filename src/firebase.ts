@@ -12,11 +12,6 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
-// Optional: Dev check to catch missing variables immediately
-if (import.meta.env.DEV && !firebaseConfig.apiKey) {
-  console.error("Firebase environment variables are missing. Check your .env or Vercel configuration.");
-}
-
 // Initialize Firebase
 export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
