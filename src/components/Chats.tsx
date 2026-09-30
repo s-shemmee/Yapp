@@ -1,6 +1,6 @@
 import React, { useContext, useEffect, useState } from "react";
 import Searchbar from "../components/Searchbar";
-import { doc, getDoc, onSnapshot, Timestamp } from "firebase/firestore";
+import { doc, onSnapshot, Timestamp } from "firebase/firestore";
 import { AuthContext } from "../context/AuthContext";
 import { ChatContext } from "../context/ChatContext";
 import { db } from "../firebase";
@@ -20,23 +20,28 @@ import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
 import { formatDistanceStrict } from "date-fns";
 import { enUS } from "date-fns/locale";
+import "./Chats.scss";
 
-interface ChatData {
+const PRIMARY = "#9474f4";
+const GREY = "#5e5e5e";
+
+interface ChatEntry {
   userInfo: {
     uid: string;
     displayName: string;
     photoURL: string;
     profession: string;
   };
-  messages: Array<{
-    id: string;
-    senderId: string;
-    date: Timestamp;
-    message?: {
-      text?: string;
-      img?: string;
-    };
-  }>;
+  date?: Timestamp;
+}
+
+type ChatDataMap = Record<string, ChatEntry>;
+
+interface LastMessageInfo {
+  text?: string;
+  img?: string;
+  displayDate: string;
+  sortKey: number;
 }
 
 interface ChatsProps {
@@ -47,88 +52,62 @@ interface ChatsProps {
 const Chats: React.FC<ChatsProps> = ({ onSelectChat, selectedChatId }) => {
   const currentUser = useContext(AuthContext);
   const { dispatch } = useContext(ChatContext);
-  const [lastMessages, setLastMessages] = useState<Record<string, { message?: { text?: string; img?: string }; date: string }>>({});
-  const [chatData, setChatData] = useState<Record<string, ChatData>>({});
+  const [lastMessages, setLastMessages] = useState<Record<string, LastMessageInfo>>({});
+  const [chatData, setChatData] = useState<ChatDataMap>({});
   const [anchorEls, setAnchorEls] = useState<Record<string, HTMLElement | null>>({});
 
-  const handleClick = (event: React.MouseEvent<HTMLButtonElement>, chatId: string) => {
-    setAnchorEls((prev) => ({
-      ...prev,
-      [chatId]: event.currentTarget,
-    }));
+  const handleMenuOpen = (
+    event: React.MouseEvent<HTMLButtonElement>,
+    chatId: string
+  ) => {
+
+    event.stopPropagation();
+    setAnchorEls((prev) => ({ ...prev, [chatId]: event.currentTarget }));
   };
-  
-  const handleClose = (chatId: string) => {
-    setAnchorEls((prev) => ({
-      ...prev,
-      [chatId]: null,
-    }));
+
+  const handleMenuClose = (chatId: string) => {
+    setAnchorEls((prev) => ({ ...prev, [chatId]: null }));
   };
-  
+
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        if (currentUser) {
-          const snapshot = await getDoc(doc(db, "userChats", currentUser.uid));
-          const data = snapshot.data();
-          setChatData(data || {});
+    if (!currentUser) return;
 
-          if (data && data.userInfo) {
-            const userDoc = await getDoc(doc(db, "users", data.userInfo.uid));
-            const userMetadata = userDoc.data()?.metadata || {};
-
-            dispatch({
-              type: "CHANGE_USER",
-              payload: {
-                ...data.userInfo,
-                date: data.date,
-                userMetadata: {
-                  creationTime: userMetadata.creationTime || null,
-                  lastSignInTime: userMetadata.lastSignInTime || null,
-                },
-              },
-            });
-          }
-        }
-      } catch (error) {
+    const unsubscribe = onSnapshot(
+      doc(db, "userChats", currentUser.uid),
+      (snapshot) => {
+        setChatData((snapshot.data() as ChatDataMap) || {});
+      },
+      (error) => {
         console.error("Error fetching user chats:", error);
       }
-    };
+    );
 
-    const unsubscribe = currentUser && onSnapshot(doc(db, "userChats", currentUser.uid), fetchData);
-
-    return () => {
-      unsubscribe && unsubscribe();
-    };
-  }, [currentUser, dispatch]);
+    return () => unsubscribe();
+  }, [currentUser]);
 
   useEffect(() => {
-    const unsubscribeMessages = Object.keys(chatData).map((chatId) => {
-      return onSnapshot(doc(db, "chats", chatId), (snapshot) => {
+    const unsubscribes = Object.keys(chatData).map((chatId) =>
+      onSnapshot(doc(db, "chats", chatId), (snapshot) => {
         const messages = snapshot.data()?.messages || [];
         const lastMessage = messages[messages.length - 1];
+        if (!lastMessage?.date) return;
 
-        if (lastMessage) {
-          const formattedDistance = formatDistanceStrict(
-            lastMessage.date.toDate(),
-            new Date(),
-            { locale: enUS }
-          );
-          setLastMessages((prev) => ({
-            ...prev,
-            [chatId]: {
-              message: {
-                text: lastMessage.message?.text || "",
-                img: lastMessage.message?.img || "",
-              },
-              date: formattedDistance,
-            },
-          }));
-        }
-      });
-    });
+        const messageDate = lastMessage.date.toDate();
+        setLastMessages((prev) => ({
+          ...prev,
+          [chatId]: {
+            text: lastMessage.message?.text || "",
+            img: lastMessage.message?.img || "",
+            displayDate: formatDistanceStrict(messageDate, new Date(), {
+              locale: enUS,
+            }),
+            sortKey: messageDate.getTime(),
+          },
+        }));
+      })
+    );
 
-    return () => unsubscribeMessages.forEach((unsubscribe) => unsubscribe());
+    return () => unsubscribes.forEach((unsubscribe) => unsubscribe());
   }, [chatData]);
 
   const openChat = (chatId: string) => {
@@ -139,114 +118,11 @@ const Chats: React.FC<ChatsProps> = ({ onSelectChat, selectedChatId }) => {
     }
   };
 
-  const renderChatsList = () => {
-    //TODO: sort chats by the last message or create a filter for this feature
-    const sortedChats = Object.keys(chatData).sort((a, b) => {
-      const dateA = lastMessages[a]?.date || "";
-      const dateB = lastMessages[b]?.date || "";
-      return new Date(dateB).getTime() - new Date(dateA).getTime();
-    });
-
-    return sortedChats.map((chatId) => {
-      const { userInfo } = chatData[chatId];
-
-      if (!userInfo) {
-        return null;
-      }
-
-      const lastMessage = lastMessages[chatId];
-
-      // Determine the value of truncatedMessage based on message type
-      const truncatedMessage = lastMessage?.message?.text
-        ? lastMessage.message.text.length > 20
-          ? `${lastMessage.message.text.slice(0, 20)}...`
-          : lastMessage.message.text
-        : lastMessage?.message?.img
-        ? "Attachment"
-        : "No messages yet";
-
-        return (
-          <div key={chatId} className={`chatCard ${selectedChatId === chatId ? "selected" : ""}`} onClick={() => openChat(chatId)}>
-            <div className="chatUserInfo">
-              <img
-                src={userInfo.photoURL}
-                alt={userInfo.displayName}
-                className="chatUserImg"
-              />
-              <div className="chatContent">
-                <div className="chatUser">
-                  <h4 className="chatUserName">{userInfo.displayName}</h4>
-                  <span className="chatUserProfession">
-                    {userInfo.profession || "No profession"}
-                  </span>
-                </div>
-                <p className="chatLastMessage">{truncatedMessage}</p>
-              </div>
-            </div>
-            <div className="chatUserDetails">
-              <IconButton onClick={(e) => handleClick(e, chatId)}>
-                <Tooltip title="More" className="button">
-                  <MoreHorizRoundedIcon />
-                </Tooltip>
-              </IconButton>
-              {lastMessage && <p className="timestamp">{lastMessage.date}</p>}
-            </div>
-            <Menu
-              id={`basic-menu-${chatId}`}
-              anchorEl={anchorEls[chatId]}
-              open={Boolean(anchorEls[chatId])}
-              onClose={() => handleClose(chatId)}
-            >
-              <MenuItem>
-                <ListItemIcon>
-                  <MarkChatUnreadRoundedIcon
-                    sx={{ color: "#9474f4", fontSize: "20px" }}
-                  />
-                </ListItemIcon>
-                <ListItemText>
-                  <Typography
-                    variant="body2"
-                    sx={{ color: "#5e5e5e", fontSize: "14px", fontWeight: "600" }}
-                  >
-                    Mark as unread
-                  </Typography>
-                </ListItemText>
-              </MenuItem>
-              <MenuItem>
-                <ListItemIcon>
-                  <ArchiveRoundedIcon
-                    sx={{ color: "#9474f4", fontSize: "20px" }}
-                  />
-                </ListItemIcon>
-                <ListItemText>
-                  <Typography
-                    variant="body2"
-                    sx={{ color: "#5e5e5e", fontSize: "14px", fontWeight: "600" }}
-                  >
-                    Archive Chat
-                  </Typography>
-                </ListItemText>
-              </MenuItem>
-              <MenuItem>
-                <ListItemIcon>
-                  <DeleteRoundedIcon
-                    sx={{ color: "#9474f4", fontSize: "20px" }}
-                  />
-                </ListItemIcon>
-                <ListItemText>
-                  <Typography
-                    variant="body2"
-                    sx={{ color: "#5e5e5e", fontSize: "14px", fontWeight: "600" }}
-                  >
-                    Delete Chat
-                  </Typography>
-                </ListItemText>
-              </MenuItem>
-            </Menu>
-          </div>
-        );
-      });
-    };
+  const sortedChatIds = Object.keys(chatData).sort((a, b) => {
+    const keyA = lastMessages[a]?.sortKey ?? -Infinity;
+    const keyB = lastMessages[b]?.sortKey ?? -Infinity;
+    return keyB - keyA;
+  });
 
   return (
     <div className="chatsContainer">
@@ -255,7 +131,110 @@ const Chats: React.FC<ChatsProps> = ({ onSelectChat, selectedChatId }) => {
         <Divider textAlign="left">
           <p className="chatTitle">Inbox</p>
         </Divider>
-        {renderChatsList()}
+
+        <ul className="chatCards">
+          {sortedChatIds.map((chatId) => {
+            const { userInfo } = chatData[chatId];
+            if (!userInfo) return null;
+
+            const lastMessage = lastMessages[chatId];
+            const truncatedMessage = lastMessage?.text
+              ? lastMessage.text.length > 20
+                ? `${lastMessage.text.slice(0, 20)}...`
+                : lastMessage.text
+              : lastMessage?.img
+              ? "Attachment"
+              : "No messages yet";
+
+            const isSelected = selectedChatId === chatId;
+
+            return (
+              <li
+                key={chatId}
+                className={`chatCard${isSelected ? " selected" : ""}`}
+              >
+                <button
+                  type="button"
+                  className="chatCardMain"
+                  onClick={() => openChat(chatId)}
+                  aria-current={isSelected ? "true" : undefined}
+                >
+                  <div className="chatUserInfo">
+                    <img
+                      src={userInfo.photoURL}
+                      alt={`${userInfo.displayName}'s avatar`}
+                      className="chatUserImg"
+                    />
+                    <div className="chatContent">
+                      <div className="chatUser">
+                        <h4 className="chatUserName">{userInfo.displayName}</h4>
+                        <span className="chatUserProfession">
+                          {userInfo.profession || "No profession"}
+                        </span>
+                      </div>
+                      <p className="chatLastMessage">{truncatedMessage}</p>
+                    </div>
+                  </div>
+                </button>
+
+                <div className="chatUserDetails">
+                  <Tooltip title="More options">
+                    <IconButton
+                      className="button"
+                      onClick={(e) => handleMenuOpen(e, chatId)}
+                      aria-label="More options"
+                      aria-haspopup="menu"
+                      aria-expanded={Boolean(anchorEls[chatId])}
+                    >
+                      <MoreHorizRoundedIcon />
+                    </IconButton>
+                  </Tooltip>
+                  {lastMessage && (
+                    <p className="timestamp">{lastMessage.displayDate}</p>
+                  )}
+                </div>
+
+                <Menu
+                  id={`chat-menu-${chatId}`}
+                  anchorEl={anchorEls[chatId]}
+                  open={Boolean(anchorEls[chatId])}
+                  onClose={() => handleMenuClose(chatId)}
+                >
+                  <MenuItem disabled>
+                    <ListItemIcon>
+                      <MarkChatUnreadRoundedIcon sx={{ color: PRIMARY, fontSize: "20px" }} />
+                    </ListItemIcon>
+                    <ListItemText>
+                      <Typography variant="body2" sx={{ color: GREY, fontSize: "14px", fontWeight: 600 }}>
+                        Mark as unread (coming soon)
+                      </Typography>
+                    </ListItemText>
+                  </MenuItem>
+                  <MenuItem disabled>
+                    <ListItemIcon>
+                      <ArchiveRoundedIcon sx={{ color: PRIMARY, fontSize: "20px" }} />
+                    </ListItemIcon>
+                    <ListItemText>
+                      <Typography variant="body2" sx={{ color: GREY, fontSize: "14px", fontWeight: 600 }}>
+                        Archive chat (coming soon)
+                      </Typography>
+                    </ListItemText>
+                  </MenuItem>
+                  <MenuItem disabled>
+                    <ListItemIcon>
+                      <DeleteRoundedIcon sx={{ color: PRIMARY, fontSize: "20px" }} />
+                    </ListItemIcon>
+                    <ListItemText>
+                      <Typography variant="body2" sx={{ color: GREY, fontSize: "14px", fontWeight: 600 }}>
+                        Delete chat (coming soon)
+                      </Typography>
+                    </ListItemText>
+                  </MenuItem>
+                </Menu>
+              </li>
+            );
+          })}
+        </ul>
       </div>
     </div>
   );

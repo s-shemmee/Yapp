@@ -1,0 +1,228 @@
+@use "../styles/tokens" as *;
+
+.chatsContainer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  flex-direction: column;
+  width: 30%;
+  background-color: $accent-color-2;
+  height: 100%;
+  padding: 20px 10px;
+  overflow-y: auto;
+
+  ::-webkit-scrollbar {
+    width: 0px;
+  }
+
+  .chatsList {
+    display: flex;
+    justify-content: flex-start;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+    gap: 10px;
+    padding: 10px 0;
+    overflow-y: scroll;
+
+    .chatTitle {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: $primary-color-text;
+    }
+
+    .chatCards {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      width: 100%;
+    }
+
+    .chatCard {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      min-height: 90px;
+      background-color: $white;
+      border-radius: $radius-md;
+      padding: 10px 20px;
+      gap: 10px;
+      transition: background-color 0.2s ease-in-out;
+
+      .chatCardMain {
+        display: flex;
+        align-items: center;
+        flex: 1;
+        min-width: 0;
+        background: none;
+        border: none;
+        padding: 0;
+        margin: 0;
+        text-align: left;
+        font: inherit;
+        color: inherit;
+        cursor: pointer;
+        border-radius: $radius-md;
+
+        &:focus-visible {
+          @include focus-ring;
+        }
+      }
+
+      &.selected {
+        background-color: $primary-color-dark;
+
+        .chatUserInfo {
+          .chatUserImg {
+            border: 2px solid $white;
+          }
+
+          .chatContent {
+            .chatUser {
+              .chatUserName {
+                color: $white;
+              }
+              .chatUserProfession {
+                color: $white;
+              }
+            }
+            .chatLastMessage {
+              color: $white;
+            }
+          }
+        }
+
+        .chatUserDetails {
+          .timestamp {
+            color: $white;
+          }
+          .button {
+            color: $white;
+          }
+        }
+      }
+
+      .chatUserInfo {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-direction: row;
+        gap: 16px;
+        min-width: 0;
+
+        .chatUserImg {
+          width: 60px;
+          height: 60px;
+          flex-shrink: 0;
+          border-radius: 50%;
+          border: 2px solid $primary-color;
+          object-fit: cover;
+        }
+
+        .chatContent {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-start;
+          justify-content: center;
+          text-align: left;
+          gap: 6px;
+          min-width: 0;
+          width: 100%;
+
+          .chatUser {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            text-align: left;
+            min-width: 0;
+            width: 100%;
+
+            .chatUserName {
+              font-size: 1rem;
+              font-weight: 600;
+              color: $primary-color-text;
+              max-width: 100%;
+              white-space: nowrap;
+              overflow: hidden;
+              text-overflow: ellipsis;
+            }
+
+            .chatUserProfession {
+              font-size: 0.7rem;
+              font-weight: 500;
+              color: $grey;
+            }
+          }
+
+          .chatLastMessage {
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: $grey;
+            max-width: 100%;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+          }
+        }
+      }
+
+      .chatUserDetails {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        text-align: center;
+        gap: 6px;
+        flex-shrink: 0;
+
+        .timestamp {
+          font-size: 0.6rem;
+          font-weight: 500;
+          color: $grey;
+        }
+
+        .button {
+          color: $primary-color;
+          transition: color 0.2s ease-in-out;
+
+          &:hover,
+          &:focus-visible {
+            color: $primary-color-dark;
+          }
+
+          &:focus-visible {
+            @include focus-ring;
+          }
+        }
+      }
+    }
+  }
+}
+
+@media (max-width: 420px) {
+  .chatsContainer {
+    .chatsList .chatCard {
+      padding: 8px 12px;
+      min-height: 72px;
+
+      .chatUserInfo {
+        gap: 10px;
+
+        .chatUserImg {
+          width: 46px;
+          height: 46px;
+        }
+      }
+
+      .chatUserDetails {
+        .timestamp {
+          display: none;
+        }
+      }
+    }
+  }
+}
