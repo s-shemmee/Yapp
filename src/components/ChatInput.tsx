@@ -3,13 +3,14 @@ import EmojiPicker, { EmojiClickData } from "emoji-picker-react";
 import { arrayUnion, doc, updateDoc, Timestamp } from "firebase/firestore";
 import { db } from "../firebase";
 import { v4 as uuidv4 } from "uuid";
-import SendRoundedIcon from "@mui/icons-material/SendRounded";
-import AttachFileRoundedIcon from "@mui/icons-material/AttachFileRounded";
-import MicRoundedIcon from "@mui/icons-material/MicRounded";
-import MoodRoundedIcon from "@mui/icons-material/MoodRounded";
-import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
-import TextFieldsRoundedIcon from "@mui/icons-material/TextFieldsRounded";
-import InsertLinkRoundedIcon from "@mui/icons-material/InsertLinkRounded";
+import { SendRounded as SendRoundedIcon,
+  AttachFileRounded as AttachFileRoundedIcon,
+  MicRounded as MicRoundedIcon,
+  MoodRounded as MoodRoundedIcon,
+  CloseRounded as CloseRoundedIcon,
+  TextFieldsRounded as TextFieldsRoundedIcon,
+  InsertLinkRounded as InsertLinkRoundedIcon,
+ } from "@mui/icons-material";
 import { IconButton, InputBase, Tooltip } from "@mui/material";
 import { ChatContext } from "../context/ChatContext";
 import AuthContext from "../context/AuthContext";

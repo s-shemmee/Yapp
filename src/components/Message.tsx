@@ -1,10 +1,11 @@
 import React, { useContext, useState, useCallback } from "react";
 import { AuthContext } from "../context/AuthContext";
-import MoreHorizRoundedIcon from "@mui/icons-material/MoreHorizRounded";
-import ReplyRoundedIcon from "@mui/icons-material/ReplyRounded";
-import ShortcutRoundedIcon from "@mui/icons-material/ShortcutRounded";
-import DeleteRoundedIcon from "@mui/icons-material/DeleteRounded";
-import ContentCopyRoundedIcon from "@mui/icons-material/ContentCopyRounded";
+import { MoreHorizRounded as MoreHorizRoundedIcon,
+  ReplyRounded as ReplyRoundedIcon,
+  ShortcutRounded as ShortcutRoundedIcon,
+  DeleteRounded as DeleteRoundedIcon,
+  ContentCopyRounded as ContentCopyRoundedIcon, }
+  from "@mui/icons-material";
 import {
   IconButton,
   ListItemIcon,

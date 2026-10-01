@@ -4,10 +4,12 @@ import { doc, onSnapshot, Timestamp } from "firebase/firestore";
 import { AuthContext } from "../context/AuthContext";
 import { ChatContext } from "../context/ChatContext";
 import { db } from "../firebase";
-import MoreHorizRoundedIcon from "@mui/icons-material/MoreHorizRounded";
-import MarkChatUnreadRoundedIcon from "@mui/icons-material/MarkChatUnreadRounded";
-import ArchiveRoundedIcon from "@mui/icons-material/ArchiveRounded";
-import DeleteRoundedIcon from "@mui/icons-material/DeleteRounded";
+import {
+  MoreHorizRounded as MoreHorizRoundedIcon,
+  MarkChatUnreadRounded as MarkChatUnreadRoundedIcon,
+  ArchiveRounded as ArchiveRoundedIcon,
+  DeleteRounded as DeleteRoundedIcon,
+} from "@mui/icons-material";
 import {
   IconButton,
   Tooltip,

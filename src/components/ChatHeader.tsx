@@ -2,14 +2,16 @@ import React, { useState, useContext, useEffect, useCallback } from "react";
 import { getDoc, doc } from "firebase/firestore";
 import { db } from "../firebase";
 import { ChatContext } from "../context/ChatContext";
-import FlagOutlinedIcon from "@mui/icons-material/FlagOutlined";
-import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
-import MoreVertOutlinedIcon from "@mui/icons-material/MoreVertOutlined";
+import {
+  FlagOutlined as FlagOutlinedIcon,
+  InfoOutlined as InfoOutlinedIcon,
+  MoreVertOutlined as MoreVertOutlinedIcon,
+  NotificationsOffRounded as NotificationsOffRoundedIcon,
+  ArchiveRounded as ArchiveRoundedIcon,
+  BlockRounded as BlockRoundedIcon,
+} from "@mui/icons-material";
 import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
-import NotificationsOffRoundedIcon from "@mui/icons-material/NotificationsOffRounded";
-import ArchiveRoundedIcon from "@mui/icons-material/ArchiveRounded";
-import BlockRounded from "@mui/icons-material/BlockRounded";
 import {
   IconButton,
   ListItemIcon,
@@ -173,7 +175,7 @@ const ChatHeader: React.FC = () => {
           </MenuItem>
           <MenuItem disabled>
             <ListItemIcon>
-              <BlockRounded sx={{ color: PRIMARY, fontSize: "20px" }} />
+              <BlockRoundedIcon sx={{ color: PRIMARY, fontSize: "20px" }} />
             </ListItemIcon>
             <ListItemText>
               <Typography variant="body2" sx={{ color: GREY, fontSize: "14px", fontWeight: 600 }}>

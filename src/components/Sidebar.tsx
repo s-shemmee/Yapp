@@ -6,10 +6,12 @@ import { doc, updateDoc } from "firebase/firestore";
 import { signOut } from "firebase/auth";
 import { AuthContext } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
-import HomeRoundedIcon from "@mui/icons-material/HomeRounded";
-import ArchiveRoundedIcon from "@mui/icons-material/ArchiveRounded";
-import SettingsRoundedIcon from "@mui/icons-material/SettingsRounded";
-import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
+import {
+  HomeRounded as HomeRoundedIcon,
+  ArchiveRounded as ArchiveRoundedIcon,
+  SettingsRounded as SettingsRoundedIcon,
+  LogoutRounded as LogoutRoundedIcon,
+} from "@mui/icons-material";
 import { IconButton, Tooltip } from "@mui/material";
 import "./Sidebar.scss";
 

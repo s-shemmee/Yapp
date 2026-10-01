@@ -13,9 +13,11 @@ import {
 import { db } from "../firebase";
 import { AuthContext } from "../context/AuthContext";
 import { IconButton, Tooltip } from "@mui/material";
-import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import WavingHandRoundedIcon from "@mui/icons-material/WavingHandRounded";
-import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
+import {
+  SearchRounded as SearchRoundedIcon,
+  WavingHandRounded as WavingHandRoundedIcon,
+  CloseRounded as CloseRoundedIcon,
+} from "@mui/icons-material";
 import "./Searchbar.scss";
 
 interface UserData {
