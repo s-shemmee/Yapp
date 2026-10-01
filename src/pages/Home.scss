@@ -1,0 +1,73 @@
+@use "../styles/tokens" as *;
+
+.home {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  width: 70vw;
+  height: 800px;
+  background-color: $accent-color-1;
+  border-radius: 25px;
+  box-shadow: 0 0 10px 0 rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+
+  .noChatMessage {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    text-align: center;
+    width: 70%;
+    height: 100%;
+    padding: 20px 10px;
+
+    h4 {
+      font-size: 2rem;
+      font-weight: 500;
+      color: $primary-color;
+      margin-bottom: 10px;
+    }
+
+    p {
+      font-size: 1rem;
+      font-weight: 400;
+      color: $grey;
+    }
+  }
+
+  .chatsContainer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    flex-direction: column;
+    width: 30%;
+    background-color: $accent-color-2;
+    height: 100%;
+    padding: 20px 10px;
+    overflow-y: auto;
+
+    ::-webkit-scrollbar {
+      width: 0px;
+    }
+  }
+
+  .chat {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-direction: column;
+    width: 70%;
+    height: 100%;
+    background-color: $accent-color-3;
+    padding: 20px 10px;
+    overflow-y: auto;
+
+    ::-webkit-scrollbar {
+      width: 5px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+  }
+}

@@ -3,6 +3,7 @@ import Sidebar from "../components/Sidebar";
 import Chats from "../components/Chats";
 import Chat from "../components/Chat";
 import { AuthContext } from "../context/AuthContext";
+import "./Home.scss";
 
 const Home: React.FC = () => {
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
