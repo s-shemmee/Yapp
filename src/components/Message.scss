@@ -1,0 +1,139 @@
+@use "../styles/tokens" as *;
+
+.message {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 20px;
+
+  .messageActions {
+    .MuiIconButton-root:focus-visible {
+      @include focus-ring;
+    }
+  }
+
+  &.Sender {
+    flex-direction: row-reverse;
+
+    > .SenderInfo {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+
+      .SenderImg {
+        width: 40px;
+        height: 40px;
+        border: 2px solid $primary-color;
+        border-radius: 50%;
+        object-fit: cover;
+      }
+
+      .timestamp {
+        font-size: 0.7rem;
+        font-weight: 500;
+        color: $grey;
+      }
+    }
+
+    > .messageContent {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      max-width: 50%;
+      word-break: break-word;
+
+      .messageText {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        padding: 10px 20px;
+        background-color: $primary-color-dark; // text sits directly on this — needs 4.5:1
+        color: $white;
+        border-radius: 10px 10px 0px 10px;
+        font-size: 1rem;
+        font-weight: 500;
+        line-height: 1.6;
+        width: fit-content;
+      }
+
+      .messageImg {
+        width: 100%;
+        max-width: 280px;
+        height: auto;
+        border-radius: 10px;
+        object-fit: contain;
+      }
+    }
+  }
+
+  &.Receiver {
+    > .ReceiverInfo {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+
+      .ReceiverImg {
+        width: 40px;
+        height: 40px;
+        border: 2px solid $primary-color;
+        border-radius: 50%;
+        object-fit: cover;
+      }
+
+      .timestamp {
+        font-size: 0.7rem;
+        font-weight: 500;
+        color: $grey;
+      }
+    }
+
+    > .messageContent {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      max-width: 50%;
+      word-break: break-word;
+
+      .messageText {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        gap: 5px;
+        padding: 10px 20px;
+        background-color: $white;
+        color: #222;
+        box-shadow: rgba(0, 0, 0, 0.1) 0px 8px 10px;
+        border-radius: 10px 10px 10px 0px;
+        font-size: 1rem;
+        font-weight: 500;
+        line-height: 1.6;
+        width: fit-content;
+      }
+
+      .messageImg {
+        width: 100%;
+        max-width: 280px;
+        height: auto;
+        border-radius: 10px;
+        object-fit: contain;
+      }
+    }
+  }
+}
+
+@media (max-width: 420px) {
+  .message {
+    &.Sender > .messageContent,
+    &.Receiver > .messageContent {
+      max-width: 75%;
+    }
+  }
+}

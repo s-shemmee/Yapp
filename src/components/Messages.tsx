@@ -1,8 +1,9 @@
-import React, { useContext, useEffect, useState } from "react";
+import React, { useContext, useEffect, useRef, useState } from "react";
 import { Timestamp, doc, onSnapshot } from "firebase/firestore";
 import { db } from "../firebase";
 import Message from "./Message";
 import { ChatContext } from "../context/ChatContext";
+import "./Messages.scss";
 
 interface MessageData {
   id: string;
@@ -18,26 +19,48 @@ interface MessageData {
 
 const Messages: React.FC = () => {
   const [messages, setMessages] = useState<MessageData[]>([]);
+  const [loadError, setLoadError] = useState(false);
   const { state } = useContext(ChatContext);
+  const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const unsubscribe = onSnapshot(doc(db, "chats", state.chatId), (doc) => {
-      doc.exists() && setMessages(doc.data()?.messages || []);
-    });
+    setLoadError(false);
 
-    return () => {
-      unsubscribe();
-    };
+    const unsubscribe = onSnapshot(
+      doc(db, "chats", state.chatId),
+      (snapshot) => {
+        setMessages(snapshot.exists() ? snapshot.data()?.messages || [] : []);
+      },
+      (error) => {
+        console.error("Error loading messages:", error);
+        setLoadError(true);
+      }
+    );
+
+    return () => unsubscribe();
   }, [state.chatId]);
 
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages.length]);
+
   return (
-    <div className="Messages">
-      {messages.length > 0 ? (
-        messages.map((message) => (
-          <Message key={message.id} message={message} />
-        ))
+    <div className="Messages" aria-live="polite">
+      {loadError ? (
+        <p className="noMessages" role="alert">
+          Couldn't load messages. Check your connection and try again.
+        </p>
+      ) : messages.length > 0 ? (
+        <>
+          {messages.map((message) => (
+            <Message key={message.id} message={message} />
+          ))}
+          <div ref={bottomRef} aria-hidden="true" />
+        </>
       ) : (
-        <p className="noMessages">No messages in this chat so far. Feel free to begin! 😄</p>
+        <p className="noMessages">
+          No messages in this chat so far. Feel free to begin! 😄
+        </p>
       )}
     </div>
   );
