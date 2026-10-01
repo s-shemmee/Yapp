@@ -12,13 +12,15 @@ import {
 } from "firebase/auth";
 import { FirebaseError } from "firebase/app";
 import { doc, setDoc } from "firebase/firestore";
-import AccountCircleOutlinedIcon from "@mui/icons-material/AccountCircleOutlined";
-import MailOutlineRoundedIcon from "@mui/icons-material/MailOutlineRounded";
-import HttpsOutlinedIcon from "@mui/icons-material/HttpsOutlined";
-import VisibilityOffOutlinedIcon from "@mui/icons-material/VisibilityOffOutlined";
-import RemoveRedEyeOutlinedIcon from "@mui/icons-material/RemoveRedEyeOutlined";
-import AddPhotoAlternateRoundedIcon from "@mui/icons-material/AddPhotoAlternateRounded";
-import WorkOutlineRoundedIcon from "@mui/icons-material/WorkOutlineRounded";
+import {
+  AccountCircleOutlined as AccountCircleOutlinedIcon,
+  MailOutlineRounded as MailOutlineRoundedIcon,
+  HttpsOutlined as HttpsOutlinedIcon,
+  VisibilityOffOutlined as VisibilityOffOutlinedIcon,
+  RemoveRedEyeOutlined as RemoveRedEyeOutlinedIcon,
+  AddPhotoAlternateRounded as AddPhotoAlternateRoundedIcon,
+  WorkOutlineRounded as WorkOutlineRoundedIcon,
+} from "@mui/icons-material";
 import LoadingScreen from "../components/LoadingScreen";
 import { Typography } from "@mui/material";
 
@@ -27,9 +29,6 @@ const ALLOWED_AVATAR_TYPES = ["image/jpeg", "image/png", "image/gif"];
 const MAX_TEXT_FIELD_LENGTH = 60;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-// Cloudinary unsigned upload — no secret key on the client, restrictions
-// (format/size, no-overwrite, random public ID) are enforced by the
-// preset configured in the Cloudinary console.
 const CLOUDINARY_CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
 

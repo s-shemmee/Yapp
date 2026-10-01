@@ -12,10 +12,12 @@ import {
   browserSessionPersistence,
 } from "firebase/auth";
 import { FirebaseError } from "firebase/app";
-import MailOutlineRoundedIcon from "@mui/icons-material/MailOutlineRounded";
-import HttpsOutlinedIcon from "@mui/icons-material/HttpsOutlined";
-import VisibilityOffOutlinedIcon from "@mui/icons-material/VisibilityOffOutlined";
-import RemoveRedEyeOutlinedIcon from "@mui/icons-material/RemoveRedEyeOutlined";
+import {
+  MailOutlineRounded as MailOutlineRoundedIcon,
+  HttpsOutlined as HttpsOutlinedIcon,
+  VisibilityOffOutlined as VisibilityOffOutlinedIcon,
+  RemoveRedEyeOutlined as RemoveRedEyeOutlinedIcon,
+} from "@mui/icons-material";
 import Checkbox from "@mui/material/Checkbox";
 import { Typography } from "@mui/material";
 import LoadingScreen from "../components/LoadingScreen";
