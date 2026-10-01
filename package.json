@@ -43,5 +43,9 @@
     "protobufjs@7.6.6": true,
     "@firebase/util@1.15.3": true,
     "@parcel/watcher@2.6.0": true
+  },
+  "overrides": {
+    "@grpc/grpc-js": "^1.13.6",
+    "minimatch": "^9.0.7"
   }
 }
