@@ -51,13 +51,37 @@
         justify-content: center;
         flex-direction: column;
         padding: 10px 20px;
-        background-color: $primary-color-dark; // text sits directly on this — needs 4.5:1
+        background-color: $primary-color-dark;
         color: $white;
         border-radius: 10px 10px 0px 10px;
         font-size: 1rem;
         font-weight: 500;
         line-height: 1.6;
         width: fit-content;
+
+        white-space: pre-line;
+
+        strong {
+          font-weight: 700;
+        }
+
+        em {
+          font-style: italic;
+        }
+
+        s {
+          text-decoration: line-through;
+          opacity: 0.8;
+        }
+
+        .messageInlineCode {
+          font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo,
+            monospace;
+          font-size: 0.85em;
+          padding: 1px 5px;
+          border-radius: 4px;
+          background-color: rgba(255, 255, 255, 0.2);
+        }
       }
 
       .messageImg {
@@ -116,6 +140,29 @@
         font-weight: 500;
         line-height: 1.6;
         width: fit-content;
+        white-space: pre-line;
+
+        strong {
+          font-weight: 700;
+        }
+
+        em {
+          font-style: italic;
+        }
+
+        s {
+          text-decoration: line-through;
+          opacity: 0.8;
+        }
+
+        .messageInlineCode {
+          font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo,
+            monospace;
+          font-size: 0.85em;
+          padding: 1px 5px;
+          border-radius: 4px;
+          background-color: rgba(0, 0, 0, 0.12);
+        }
       }
 
       .messageImg {

@@ -11,7 +11,7 @@ import { SendRounded as SendRoundedIcon,
   TextFieldsRounded as TextFieldsRoundedIcon,
   InsertLinkRounded as InsertLinkRoundedIcon,
  } from "@mui/icons-material";
-import { IconButton, InputBase, Tooltip } from "@mui/material";
+import { IconButton, InputBase, Tooltip, Popover, Typography, Box } from "@mui/material";
 import { ChatContext } from "../context/ChatContext";
 import AuthContext from "../context/AuthContext";
 import "./ChatInput.scss";
@@ -62,6 +62,7 @@ const ChatInput: React.FC = () => {
   const [text, setText] = useState<string>("");
   const [img, setImg] = useState<File | null>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState<boolean>(false);
+  const [formatHelpAnchor, setFormatHelpAnchor] = useState<HTMLElement | null>(null);
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -207,13 +208,47 @@ const ChatInput: React.FC = () => {
 
       <div className="chatIcons">
         <div className="chatOptions">
-          <Tooltip title="Text format (coming soon)">
-            <span>
-              <IconButton className="chatIcon" disabled aria-label="Text format (coming soon)">
-                <TextFieldsRoundedIcon aria-hidden="true" />
-              </IconButton>
-            </span>
+          <Tooltip title="Formatting">
+            <IconButton
+              className="chatIcon"
+              onClick={(e) => setFormatHelpAnchor(e.currentTarget)}
+              aria-label="Text formatting help"
+              aria-haspopup="dialog"
+              aria-expanded={Boolean(formatHelpAnchor)}
+            >
+              <TextFieldsRoundedIcon aria-hidden="true" />
+            </IconButton>
           </Tooltip>
+
+          <Popover
+            open={Boolean(formatHelpAnchor)}
+            anchorEl={formatHelpAnchor}
+            onClose={() => setFormatHelpAnchor(null)}
+            anchorOrigin={{ vertical: "top", horizontal: "center" }}
+            transformOrigin={{ vertical: "bottom", horizontal: "center" }}
+          >
+            <Box className="formatHelpPopover">
+              <Typography variant="subtitle2" className="formatHelpTitle">
+                Formatting
+              </Typography>
+              <Box className="formatHelpRow">
+                <code>**bold**</code>
+                <strong>bold</strong>
+              </Box>
+              <Box className="formatHelpRow">
+                <code>_italic_</code>
+                <em>italic</em>
+              </Box>
+              <Box className="formatHelpRow">
+                <code>~~strike~~</code>
+                <s>strike</s>
+              </Box>
+              <Box className="formatHelpRow">
+                <code>`code`</code>
+                <code className="messageInlineCode">code</code>
+              </Box>
+            </Box>
+          </Popover>
 
           <Tooltip title="Attach an image">
             <IconButton

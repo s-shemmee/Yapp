@@ -17,7 +17,7 @@ import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
 import { Timestamp } from "firebase/firestore";
 import "./Message.scss";
-import { linkifyText } from "../utils/linkify";
+import { formatMessageText } from "../utils/formatText";
 
 const PRIMARY = "#9474f4";
 const GREY = "#5e5e5e";
@@ -85,7 +85,7 @@ const Message: React.FC<{ message: MessageData }> = ({ message }) => {
 
       <div className="messageContent">
         {message.message?.text && (
-          <p className="messageText">{linkifyText(message.message.text)}</p>
+          <p className="messageText">{formatMessageText(message.message.text)}</p>
         )}
         {message.message?.img && (
           <img

@@ -31,6 +31,7 @@ import MenuItem from "@mui/material/MenuItem";
 import { formatDistanceStrict } from "date-fns";
 import { enUS } from "date-fns/locale";
 import ConfirmDialog from "./ConfirmDialog";
+import { stripFormattingForPreview } from "../utils/formatText";
 import "./Chats.scss";
 
 const PRIMARY = "#9474f4";
@@ -235,10 +236,13 @@ const Chats: React.FC<ChatsProps> = ({
             if (!userInfo) return null;
 
             const lastMessage = lastMessages[chatId];
-            const truncatedMessage = lastMessage?.text
-              ? lastMessage.text.length > 20
-                ? `${lastMessage.text.slice(0, 20)}...`
-                : lastMessage.text
+            const previewText = lastMessage?.text
+              ? stripFormattingForPreview(lastMessage.text)
+              : "";
+            const truncatedMessage = previewText
+              ? previewText.length > 20
+                ? `${previewText.slice(0, 20)}...`
+                : previewText
               : lastMessage?.img
               ? "Attachment"
               : "No messages yet";
