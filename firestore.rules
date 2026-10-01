@@ -14,7 +14,7 @@ service cloud.firestore {
 
       allow update: if request.auth != null
         && request.auth.uid != userId
-        && isNewChatEntryOnly(userId);
+        && isNewChatEntryOnly(userId, resource.data, request.resource.data);
     }
 
     match /chats/{chatId} {
@@ -23,17 +23,17 @@ service cloud.firestore {
         && chatId in get(/databases/$(database)/documents/userChats/$(request.auth.uid)).data.keys();
 
       allow create: if request.auth != null
-        && request.resource.data.keys().hasOnly(["messages"])
+        && request.resource.data.keys().hasOnly(["messages", "createdAt"])
         && request.resource.data.messages.size() == 0;
     }
 
-    function isNewChatEntryOnly(userId) {
+    function isNewChatEntryOnly(userId, before, after) {
       let expectedChatId = request.auth.uid > userId
         ? request.auth.uid + userId
         : userId + request.auth.uid;
-      let changedKeys = request.resource.data.diff(resource.data).affectedKeys();
+      let changedKeys = after.diff(before).affectedKeys();
       return changedKeys.hasOnly([expectedChatId])
-        && !(expectedChatId in resource.data);
+        && !(expectedChatId in before);
     }
   }
 }

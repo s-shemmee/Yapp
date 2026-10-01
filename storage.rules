@@ -3,12 +3,23 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
     match /avatars/{fileName} {
-      // Avatars are shown to other users in chats, so reads stay public.
       allow read: if true;
       allow write: if request.auth != null
         && fileName.matches(request.auth.uid + '_.*')
         && request.resource.size < 5 * 1024 * 1024
         && request.resource.contentType.matches('image/(jpeg|png|gif)');
+    }
+
+    match /chats/{chatId}/{imgId} {
+      allow read: if request.auth != null
+        && firestore.exists(/databases/(default)/documents/userChats/$(request.auth.uid))
+        && chatId in firestore.get(/databases/(default)/documents/userChats/$(request.auth.uid)).data.keys();
+
+      allow write: if request.auth != null
+        && firestore.exists(/databases/(default)/documents/userChats/$(request.auth.uid))
+        && chatId in firestore.get(/databases/(default)/documents/userChats/$(request.auth.uid)).data.keys()
+        && request.resource.size < 10 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
     }
 
     match /{allPaths=**} {
