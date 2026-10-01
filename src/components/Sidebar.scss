@@ -33,6 +33,12 @@
       transition: color 0.2s ease-in-out;
     }
 
+    .MuiIconButton-root.active {
+      .sidebarIcon {
+        color: $primary-color;
+      }
+    }
+
     .MuiIconButton-root:not(.Mui-disabled):hover .sidebarIcon {
       color: $primary-color-dark;
     }

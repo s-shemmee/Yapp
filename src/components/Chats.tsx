@@ -1,6 +1,12 @@
 import React, { useContext, useEffect, useState, useCallback } from "react";
 import Searchbar from "../components/Searchbar";
-import { doc, onSnapshot, updateDoc, Timestamp } from "firebase/firestore";
+import {
+  doc,
+  onSnapshot,
+  updateDoc,
+  deleteField,
+  Timestamp,
+} from "firebase/firestore";
 import { AuthContext } from "../context/AuthContext";
 import { ChatContext } from "../context/ChatContext";
 import { db } from "../firebase";
@@ -9,6 +15,7 @@ import {
   MarkChatUnreadRounded as MarkChatUnreadRoundedIcon,
   MarkChatReadRounded as MarkChatReadRoundedIcon,
   ArchiveRounded as ArchiveRoundedIcon,
+  UnarchiveRounded as UnarchiveRoundedIcon,
   DeleteRounded as DeleteRoundedIcon,
 } from "@mui/icons-material";
 import {
@@ -23,6 +30,7 @@ import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
 import { formatDistanceStrict } from "date-fns";
 import { enUS } from "date-fns/locale";
+import ConfirmDialog from "./ConfirmDialog";
 import "./Chats.scss";
 
 const PRIMARY = "#9474f4";
@@ -37,6 +45,7 @@ interface ChatEntry {
   };
   date?: Timestamp;
   unread?: boolean;
+  archived?: boolean;
 }
 
 type ChatDataMap = Record<string, ChatEntry>;
@@ -49,16 +58,26 @@ interface LastMessageInfo {
 }
 
 interface ChatsProps {
+  view: "inbox" | "archived";
+  chatData: ChatDataMap;
   onSelectChat: (chatId: string) => void;
   selectedChatId: string | null;
+  onChatDeleted?: (chatId: string) => void;
 }
 
-const Chats: React.FC<ChatsProps> = ({ onSelectChat, selectedChatId }) => {
+const Chats: React.FC<ChatsProps> = ({
+  view,
+  chatData,
+  onSelectChat,
+  selectedChatId,
+  onChatDeleted,
+}) => {
   const currentUser = useContext(AuthContext);
   const { dispatch } = useContext(ChatContext);
   const [lastMessages, setLastMessages] = useState<Record<string, LastMessageInfo>>({});
-  const [chatData, setChatData] = useState<ChatDataMap>({});
   const [anchorEls, setAnchorEls] = useState<Record<string, HTMLElement | null>>({});
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const handleMenuOpen = (
     event: React.MouseEvent<HTMLButtonElement>,
@@ -71,22 +90,6 @@ const Chats: React.FC<ChatsProps> = ({ onSelectChat, selectedChatId }) => {
   const handleMenuClose = (chatId: string) => {
     setAnchorEls((prev) => ({ ...prev, [chatId]: null }));
   };
-
-  useEffect(() => {
-    if (!currentUser) return;
-
-    const unsubscribe = onSnapshot(
-      doc(db, "userChats", currentUser.uid),
-      (snapshot) => {
-        setChatData((snapshot.data() as ChatDataMap) || {});
-      },
-      (error) => {
-        console.error("Error fetching user chats:", error);
-      }
-    );
-
-    return () => unsubscribe();
-  }, [currentUser]);
 
   useEffect(() => {
     const unsubscribes = Object.keys(chatData).map((chatId) =>
@@ -127,12 +130,25 @@ const Chats: React.FC<ChatsProps> = ({ onSelectChat, selectedChatId }) => {
     [currentUser]
   );
 
+  const setArchived = useCallback(
+    async (chatId: string, archived: boolean) => {
+      if (!currentUser) return;
+      try {
+        await updateDoc(doc(db, "userChats", currentUser.uid), {
+          [`${chatId}.archived`]: archived,
+        });
+      } catch (error) {
+        console.error("Failed to update archived status:", error);
+      }
+    },
+    [currentUser]
+  );
+
   const openChat = (chatId: string) => {
     const chat = chatData[chatId];
     if (chat?.userInfo) {
       onSelectChat(chatId);
       dispatch({ type: "CHANGE_USER", payload: { ...chat.userInfo } });
-      // Opening a chat you'd manually marked unread clears that flag,
       if (chat.unread) {
         setUnread(chatId, false);
       }
@@ -145,19 +161,73 @@ const Chats: React.FC<ChatsProps> = ({ onSelectChat, selectedChatId }) => {
     handleMenuClose(chatId);
   };
 
-  const sortedChatIds = Object.keys(chatData).sort((a, b) => {
+  const handleToggleArchive = (chatId: string) => {
+    const current = chatData[chatId]?.archived ?? false;
+    setArchived(chatId, !current);
+    handleMenuClose(chatId);
+  };
+
+  const handleDeleteClick = (chatId: string) => {
+    setDeleteTarget(chatId);
+    handleMenuClose(chatId);
+  };
+
+  const handleCancelDelete = () => {
+    if (isDeleting) return;
+    setDeleteTarget(null);
+  };
+
+  const handleConfirmDelete = useCallback(async () => {
+    if (!currentUser || !deleteTarget) return;
+    setIsDeleting(true);
+    try {
+      await updateDoc(doc(db, "userChats", currentUser.uid), {
+        [deleteTarget]: deleteField(),
+      });
+
+      onChatDeleted?.(deleteTarget);
+    } catch (error) {
+      console.error("Failed to delete chat:", error);
+    } finally {
+      setIsDeleting(false);
+      setDeleteTarget(null);
+    }
+  }, [currentUser, deleteTarget, onChatDeleted]);
+
+  const visibleChatIds = Object.keys(chatData).filter((chatId) => {
+    const entry = chatData[chatId];
+    if (!entry?.userInfo) return false;
+    const isArchived = entry.archived ?? false;
+    return view === "archived" ? isArchived : !isArchived;
+  });
+
+  const sortedChatIds = visibleChatIds.sort((a, b) => {
     const keyA = lastMessages[a]?.sortKey ?? -Infinity;
     const keyB = lastMessages[b]?.sortKey ?? -Infinity;
     return keyB - keyA;
   });
+
+  const deleteTargetName = deleteTarget
+    ? chatData[deleteTarget]?.userInfo?.displayName ?? "this chat"
+    : "";
 
   return (
     <div className="chatsContainer">
       <Searchbar />
       <div className="chatsList">
         <Divider textAlign="left">
-          <p className="chatTitle">Inbox</p>
+          <p className="chatTitle">
+            {view === "inbox" ? "Inbox" : "Archived"}
+          </p>
         </Divider>
+
+        {sortedChatIds.length === 0 && (
+          <p className="emptyState">
+            {view === "inbox"
+              ? "No conversations yet."
+              : "No archived chats."}
+          </p>
+        )}
 
         <ul className="chatCards">
           {sortedChatIds.map((chatId) => {
@@ -174,6 +244,7 @@ const Chats: React.FC<ChatsProps> = ({ onSelectChat, selectedChatId }) => {
               : "No messages yet";
 
             const isSelected = selectedChatId === chatId;
+            const isArchived = chatData[chatId]?.archived ?? false;
 
             return (
               <li
@@ -248,23 +319,29 @@ const Chats: React.FC<ChatsProps> = ({ onSelectChat, selectedChatId }) => {
                       </Typography>
                     </ListItemText>
                   </MenuItem>
-                  <MenuItem disabled>
+
+                  <MenuItem onClick={() => handleToggleArchive(chatId)}>
                     <ListItemIcon>
-                      <ArchiveRoundedIcon sx={{ color: PRIMARY, fontSize: "20px" }} />
+                      {isArchived ? (
+                        <UnarchiveRoundedIcon sx={{ color: PRIMARY, fontSize: "20px" }} />
+                      ) : (
+                        <ArchiveRoundedIcon sx={{ color: PRIMARY, fontSize: "20px" }} />
+                      )}
                     </ListItemIcon>
                     <ListItemText>
                       <Typography variant="body2" sx={{ color: GREY, fontSize: "14px", fontWeight: 600 }}>
-                        Archive chat (coming soon)
+                        {isArchived ? "Unarchive chat" : "Archive chat"}
                       </Typography>
                     </ListItemText>
                   </MenuItem>
-                  <MenuItem disabled>
+
+                  <MenuItem onClick={() => handleDeleteClick(chatId)}>
                     <ListItemIcon>
-                      <DeleteRoundedIcon sx={{ color: PRIMARY, fontSize: "20px" }} />
+                      <DeleteRoundedIcon sx={{ color: "#d32f2f", fontSize: "20px" }} />
                     </ListItemIcon>
                     <ListItemText>
                       <Typography variant="body2" sx={{ color: GREY, fontSize: "14px", fontWeight: 600 }}>
-                        Delete chat (coming soon)
+                        Delete chat
                       </Typography>
                     </ListItemText>
                   </MenuItem>
@@ -274,6 +351,16 @@ const Chats: React.FC<ChatsProps> = ({ onSelectChat, selectedChatId }) => {
           })}
         </ul>
       </div>
+
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        title="Delete this chat?"
+        description={`This removes your conversation with ${deleteTargetName} from your inbox. This can't be undone.`}
+        confirmLabel={isDeleting ? "Deleting…" : "Delete"}
+        destructive
+        onConfirm={handleConfirmDelete}
+        onCancel={handleCancelDelete}
+      />
     </div>
   );
 };

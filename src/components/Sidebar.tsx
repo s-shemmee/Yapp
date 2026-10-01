@@ -12,14 +12,26 @@ import {
   SettingsRounded as SettingsRoundedIcon,
   LogoutRounded as LogoutRoundedIcon,
 } from "@mui/icons-material";
-import { IconButton, Tooltip } from "@mui/material";
+import { IconButton, Tooltip, Badge } from "@mui/material";
 import "./Sidebar.scss";
+
+type ChatView = "inbox" | "archived";
 
 interface SidebarProps {
   onHomeClick: () => void;
+  view: ChatView;
+  onViewChange: (view: ChatView) => void;
+  unreadCount: number;
+  archivedCount: number;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ onHomeClick }) => {
+const Sidebar: React.FC<SidebarProps> = ({
+  onHomeClick,
+  view,
+  onViewChange,
+  unreadCount,
+  archivedCount,
+}) => {
   const currentUser = React.useContext(AuthContext);
   const navigate = useNavigate();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -48,8 +60,13 @@ const Sidebar: React.FC<SidebarProps> = ({ onHomeClick }) => {
   }, [currentUser, isLoggingOut, navigate]);
 
   const handleClickHome = useCallback(() => {
+    onViewChange("inbox");
     onHomeClick();
-  }, [onHomeClick]);
+  }, [onHomeClick, onViewChange]);
+
+  const handleClickArchive = useCallback(() => {
+    onViewChange("archived");
+  }, [onViewChange]);
 
   return (
     <nav className="sidebar" aria-label={`${APP_NAME} navigation`}>
@@ -58,18 +75,59 @@ const Sidebar: React.FC<SidebarProps> = ({ onHomeClick }) => {
       </div>
 
       <div className="sidebarMenu">
-        <Tooltip title="Home">
-          <IconButton onClick={handleClickHome} aria-label="Home">
-            <HomeRoundedIcon className="sidebarIcon" aria-hidden="true" />
+        <Tooltip
+          title={unreadCount > 0 ? `Home (${unreadCount} unread)` : "Home"}
+        >
+          <IconButton
+            onClick={handleClickHome}
+            aria-label={
+              unreadCount > 0 ? `Home, ${unreadCount} unread chats` : "Home"
+            }
+            aria-pressed={view === "inbox"}
+            className={view === "inbox" ? "active" : ""}
+          >
+            <Badge
+              badgeContent={unreadCount}
+              color="error"
+              max={99}
+              invisible={unreadCount === 0}
+            >
+              <HomeRoundedIcon className="sidebarIcon" aria-hidden="true" />
+            </Badge>
           </IconButton>
         </Tooltip>
 
-        <Tooltip title="Archive (coming soon)">
-          <span>
-            <IconButton disabled aria-label="Archive (coming soon)">
-              <ArchiveRoundedIcon className="sidebarIcon" aria-hidden="true" />
-            </IconButton>
-          </span>
+        <Tooltip
+          title={
+            archivedCount > 0
+              ? `Archived chats (${archivedCount})`
+              : "Archived chats"
+          }
+        >
+          <IconButton
+            onClick={handleClickArchive}
+            aria-label={
+              archivedCount > 0
+                ? `Archived chats, ${archivedCount} total`
+                : "Archived chats"
+            }
+            aria-pressed={view === "archived"}
+            className={view === "archived" ? "active" : ""}
+          >
+          <Badge
+            badgeContent={archivedCount}
+            max={99}
+            invisible={archivedCount === 0}
+            sx={{
+              "& .MuiBadge-badge": {
+                backgroundColor: "#70747D",
+                color: "#fff",
+              },
+            }}
+          >
+            <ArchiveRoundedIcon className="sidebarIcon" aria-hidden="true" />
+          </Badge>
+          </IconButton>
         </Tooltip>
 
         <Tooltip title="Settings (coming soon)">
