@@ -1,0 +1,173 @@
+@use "../styles/tokens" as *;
+
+.searchbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  flex-direction: column;
+  width: 100%;
+
+  .visuallyHidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .searchForm {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: row;
+    width: 100%;
+    height: 60px;
+    background-color: $white;
+    border-radius: $radius-md;
+    padding: 10px 20px;
+    margin-bottom: 10px;
+    box-shadow: 0px 5px 10px rgba(9, 9, 9, 0.1);
+
+    input[type="text"] {
+      width: 100%;
+      height: 100%;
+      border: none;
+      outline: none;
+      background-color: transparent;
+      font-size: 1rem;
+      font-weight: 500;
+      color: #222;
+      margin-left: 10px;
+
+      &::placeholder {
+        font-weight: 400;
+        color: $grey-light;
+        font-style: normal;
+      }
+    }
+
+    .searchIcon {
+      font-size: 1.5rem;
+    }
+
+    .MuiIconButton-root {
+      color: $primary-color;
+      transition: color 0.2s ease-in-out;
+
+      &:not(.Mui-disabled):hover,
+      &:not(.Mui-disabled):focus-visible {
+        color: $primary-color-dark;
+      }
+
+      &.Mui-disabled {
+        color: $grey-light;
+      }
+
+      &:focus-visible {
+        @include focus-ring;
+      }
+    }
+  }
+
+  .searchStatus {
+    font-size: 0.85rem;
+    color: $grey;
+    margin-bottom: 10px;
+    align-self: flex-start;
+  }
+
+  .error-message {
+    font-size: 0.85rem;
+    color: $error-color;
+    margin-bottom: 10px;
+    align-self: flex-start;
+  }
+
+  .searchResult {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    flex-direction: column;
+    width: 100%;
+    margin-bottom: 10px;
+
+    .searchResultUser {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      min-height: 80px;
+      background-color: $primary-color-dark;
+      color: $white;
+      border-radius: $radius-md;
+      padding: 10px 20px;
+      gap: 10px;
+
+      .searchResultUserImg {
+        width: 56px;
+        height: 56px;
+        flex-shrink: 0;
+        border-radius: 50%;
+        border: 2px solid $white;
+        object-fit: cover;
+      }
+
+      .searchResultUserInfo {
+        display: flex;
+        align-items: flex-start;
+        justify-content: center;
+        flex-direction: column;
+        min-width: 0;
+        flex: 1;
+
+        .searchResultUserName {
+          font-size: 1rem;
+          font-weight: 600;
+          color: $white;
+          max-width: 100%;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .searchResultUserProfession {
+          font-size: 0.85rem;
+          font-weight: 400;
+          color: $white;
+        }
+      }
+
+      .searchResultbuttons {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-direction: row;
+        gap: 2px;
+        flex-shrink: 0;
+
+        .searchResultbutton {
+          font-size: 1.1rem;
+        }
+
+        .MuiIconButton-root {
+          color: $white;
+          transition: opacity 0.2s ease-in-out;
+
+          &:hover,
+          &:focus-visible {
+            opacity: 0.8;
+          }
+
+          &:focus-visible {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba($white, 0.6);
+          }
+        }
+      }
+    }
+  }
+}

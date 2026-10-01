@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useCallback, useId, useState } from "react";
 import {
   collection,
   query,
@@ -16,7 +16,7 @@ import { IconButton, Tooltip } from "@mui/material";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import WavingHandRoundedIcon from "@mui/icons-material/WavingHandRounded";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
-import LoadingScreen from "./LoadingScreen";
+import "./Searchbar.scss";
 
 interface UserData {
   uid: string;
@@ -29,21 +29,27 @@ const Searchbar: React.FC = () => {
   const [username, setUsername] = useState("");
   const [user, setUser] = useState<UserData | null>(null);
   const [error, setError] = useState(false);
+  const [selectError, setSelectError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const currentUser = React.useContext(AuthContext);
+  const searchInputId = useId();
 
-  const handleSearch = async () => {
+  const handleSearch = useCallback(async () => {
+    const trimmed = username.trim();
+    if (!trimmed || loading) return;
+
     try {
       setLoading(true);
-      const q = query(collection(db, "users"), where("displayName", "==", username));
+      setError(false);
+
+      const q = query(collection(db, "users"), where("displayName", "==", trimmed));
       const querySnapshot = await getDocs(q);
 
       if (querySnapshot.empty) {
         setError(true);
         setUser(null);
       } else {
-        setError(false);
         setUser(querySnapshot.docs[0].data() as UserData);
       }
     } catch (err) {
@@ -52,30 +58,36 @@ const Searchbar: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [username, loading]);
 
-  const handleKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
+  const handleSubmit = useCallback(
+    (e: React.FormEvent) => {
+      e.preventDefault();
       handleSearch();
-    }
-  };
+    },
+    [handleSearch]
+  );
 
-  const handleSelect = async () => {
+  const handleSelect = useCallback(async () => {
     if (!currentUser || !user || currentUser.uid === user.uid) {
-      // Ensure currentUser and user are defined and not the same user
       return;
     }
 
-    const combinedId = currentUser.uid > user.uid ? `${currentUser.uid}${user.uid}` : `${user.uid}${currentUser.uid}`;
+    const combinedId =
+      currentUser.uid > user.uid
+        ? `${currentUser.uid}${user.uid}`
+        : `${user.uid}${currentUser.uid}`;
+
+    setSelectError(null);
 
     try {
-      const res = await getDoc(doc(db, "chats", combinedId));
+      const currentUserChatsSnap = await getDoc(doc(db, "userChats", currentUser.uid));
+      const alreadyExists =
+        currentUserChatsSnap.exists() && combinedId in (currentUserChatsSnap.data() || {});
 
-      if (!res.exists()) {
-        // Create a chat in chats collection
-        await setDoc(doc(db, "chats", combinedId), { messages: [] });
+      if (!alreadyExists) {
+        await setDoc(doc(db, "chats", combinedId), { messages: [], createdAt: serverTimestamp() });
 
-        // Create user chats
         await updateDoc(doc(db, "userChats", currentUser.uid), {
           [`${combinedId}.userInfo`]: {
             uid: user.uid,
@@ -101,49 +113,97 @@ const Searchbar: React.FC = () => {
       }
     } catch (err) {
       console.error("Error handling selection:", err);
+      setSelectError("Couldn't start this chat. Please try again.");
     } finally {
       setUser(null);
       setUsername("");
     }
-  };
+  }, [currentUser, user]);
+
+  const clearResult = useCallback(() => {
+    setUser(null);
+    setError(false);
+  }, []);
+
+  const canSayHi = currentUser?.uid !== user?.uid;
 
   return (
     <div className="searchbar">
-      <div className="searchForm">
+      <form
+        className="searchForm"
+        role="search"
+        onSubmit={handleSubmit}
+        aria-label="Search for a user"
+      >
+        <label htmlFor={searchInputId} className="visuallyHidden">
+          Search for a user by name
+        </label>
         <input
+          id={searchInputId}
           type="text"
           placeholder="Search for a user..."
           value={username}
           onChange={(e) => setUsername(e.target.value)}
-          onKeyDown={handleKey}
+          autoComplete="off"
         />
-        <IconButton onClick={handleSearch}>
-          <SearchRoundedIcon className="searchIcon" />
-        </IconButton>
-      </div>
-      {loading && <LoadingScreen />}
-      {error && <p className="error-message">User not found</p>}
-      {user && (
+        <Tooltip title="Search">
+          <span>
+            <IconButton
+              type="submit"
+              disabled={loading || !username.trim()}
+              aria-label="Search"
+            >
+              <SearchRoundedIcon className="searchIcon" aria-hidden="true" />
+            </IconButton>
+          </span>
+        </Tooltip>
+      </form>
+
+      {loading && (
+        <p className="searchStatus" role="status" aria-live="polite">
+          Searching…
+        </p>
+      )}
+
+      {error && !loading && (
+        <p className="error-message" role="alert">
+          User not found
+        </p>
+      )}
+
+      {selectError && (
+        <p className="error-message" role="alert">
+          {selectError}
+        </p>
+      )}
+
+      {user && !loading && (
         <div className="searchResult">
           <div className="searchResultUser">
-            <img src={user.avatarURL} alt={user.displayName} className="searchResultUserImg" />
+            <img
+              src={user.avatarURL}
+              alt={`${user.displayName}'s avatar`}
+              className="searchResultUserImg"
+            />
             <div className="searchResultUserInfo">
               <h4 className="searchResultUserName">{user.displayName}</h4>
-              <p className="searchResultUserProfession">{user.profession}</p>
+              <p className="searchResultUserProfession">
+                {user.profession || "No profession"}
+              </p>
             </div>
             <div className="searchResultbuttons">
-              {!currentUser || currentUser.uid !== user.uid && (
-                <IconButton onClick={handleSelect}>
-                  <Tooltip title="Say Hi!">
-                    <WavingHandRoundedIcon className="searchResultbutton" />
-                  </Tooltip>
-                </IconButton>
-              )}
-              <IconButton onClick={() => setUser(null)}>
-                <Tooltip title="Remove">
-                  <CloseRoundedIcon className="searchResultbutton" />
+              {canSayHi && (
+                <Tooltip title="Say Hi!">
+                  <IconButton onClick={handleSelect} aria-label={`Say hi to ${user.displayName}`}>
+                    <WavingHandRoundedIcon className="searchResultbutton" aria-hidden="true" />
+                  </IconButton>
                 </Tooltip>
-              </IconButton>
+              )}
+              <Tooltip title="Remove">
+                <IconButton onClick={clearResult} aria-label="Remove search result">
+                  <CloseRoundedIcon className="searchResultbutton" aria-hidden="true" />
+                </IconButton>
+              </Tooltip>
             </div>
           </div>
         </div>
