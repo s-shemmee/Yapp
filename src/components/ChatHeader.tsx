@@ -73,18 +73,18 @@ const ChatHeader: React.FC = () => {
 
   const fetchChatCreationTime = useCallback(async () => {
     try {
-      const chatDoc = await getDoc(doc(db, "userChats", state.user.uid));
-      const entry = chatDoc.exists() ? chatDoc.data()[state.chatId] : null;
+      const chatDoc = await getDoc(doc(db, "chats", state.chatId));
+      const createdAt = chatDoc.exists() ? chatDoc.data()?.createdAt : null;
 
-      if (entry?.date) {
-        return format(entry.date.toDate(), "MMMM d, yyyy h:mm a");
+      if (createdAt) {
+        return format(createdAt.toDate(), "MMMM d, yyyy h:mm a");
       }
       return null;
     } catch (error) {
       console.error("Error fetching chat creation time:", error);
       return null;
     }
-  }, [state.chatId, state.user.uid]);
+  }, [state.chatId]);
 
   useEffect(() => {
     setLastSeenStatus("loading");
