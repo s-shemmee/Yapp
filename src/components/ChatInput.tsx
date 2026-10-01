@@ -1,21 +1,25 @@
-import React, { useRef, useContext, useState, useEffect } from "react";
-import EmojiPicker, { EmojiClickData } from 'emoji-picker-react';
+import React, { useRef, useContext, useState, useEffect, useCallback } from "react";
+import EmojiPicker, { EmojiClickData } from "emoji-picker-react";
 import { arrayUnion, doc, updateDoc, Timestamp } from "firebase/firestore";
-import { db, storage } from "../firebase";
-import { getDownloadURL, ref, uploadBytesResumable } from "firebase/storage";
+import { db } from "../firebase";
 import { v4 as uuidv4 } from "uuid";
-import SendRoundedIcon from '@mui/icons-material/SendRounded';
-import AttachFileRoundedIcon from '@mui/icons-material/AttachFileRounded';
-import MicRoundedIcon from '@mui/icons-material/MicRounded';
-import MoodRoundedIcon from '@mui/icons-material/MoodRounded';
-import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
-import TextFieldsRoundedIcon from '@mui/icons-material/TextFieldsRounded';
-import InsertLinkRoundedIcon from '@mui/icons-material/InsertLinkRounded';
+import SendRoundedIcon from "@mui/icons-material/SendRounded";
+import AttachFileRoundedIcon from "@mui/icons-material/AttachFileRounded";
+import MicRoundedIcon from "@mui/icons-material/MicRounded";
+import MoodRoundedIcon from "@mui/icons-material/MoodRounded";
+import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
+import TextFieldsRoundedIcon from "@mui/icons-material/TextFieldsRounded";
+import InsertLinkRoundedIcon from "@mui/icons-material/InsertLinkRounded";
 import { IconButton, InputBase, Tooltip } from "@mui/material";
 import { ChatContext } from "../context/ChatContext";
 import AuthContext from "../context/AuthContext";
+import "./ChatInput.scss";
 
-interface Message {
+const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+const CLOUDINARY_CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
+const CLOUDINARY_UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
+
+interface OutgoingMessage {
   id: string;
   senderId: string | undefined;
   senderName: string | null | undefined;
@@ -27,59 +31,108 @@ interface Message {
   };
 }
 
+async function uploadChatImage(file: File): Promise<string> {
+  if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_UPLOAD_PRESET) {
+    console.error(
+      "Missing VITE_CLOUDINARY_CLOUD_NAME or VITE_CLOUDINARY_UPLOAD_PRESET"
+    );
+    throw new Error("CHAT_IMAGE_UPLOAD_FAILED");
+  }
+
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+  formData.append("folder", "yapp-chat-images");
+
+  const response = await fetch(
+    `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
+    { method: "POST", body: formData }
+  );
+
+  if (!response.ok) {
+    throw new Error("CHAT_IMAGE_UPLOAD_FAILED");
+  }
+
+  const data = await response.json();
+  return data.secure_url as string;
+}
+
 const ChatInput: React.FC = () => {
   const [text, setText] = useState<string>("");
   const [img, setImg] = useState<File | null>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState<boolean>(false);
+  const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { state } = useContext(ChatContext);
   const currentUser = useContext(AuthContext);
 
-  // Reset input state when the chatId changes
   useEffect(() => {
     setText("");
     setImg(null);
+    setSendError(null);
   }, [state.chatId]);
 
-  const handleSend = async () => {
-    if (text.trim() || img) {
-      const message: Message = {
-        id: uuidv4(),
-        senderId: currentUser?.uid,
-        senderName: currentUser?.displayName,
-        senderAvatar: currentUser?.photoURL || "",
-        date: Timestamp.now(),
-      };
-  
-      if (img) {
-        const imgId = uuidv4();
-        const imgRef = ref(storage, `chats/${state.chatId}/${imgId}`);
-        const uploadTask = uploadBytesResumable(imgRef, img);
-  
-        uploadTask.on("state_changed", null, (error) => {
-          console.error(error);
-        }, () => {
-          getDownloadURL(uploadTask.snapshot.ref).then(async (downloadURL) => {
-            message.message = { img: downloadURL };
-            await updateDoc(doc(db, "chats", state.chatId), {
-              messages: arrayUnion(message),
-            });
-          });
-        });
-      } else {
-        // For text messages, store the text in the 'text' property
-        message.message = { text: text.trim() };
+  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-        // Add the message to the messages array
-        await updateDoc(doc(db, "chats", state.chatId), {
-          messages: arrayUnion(message),
-        });
-      }
+    if (!file.type.startsWith("image/")) {
+      setSendError("Only image attachments are supported right now.");
+      e.target.value = "";
+      return;
     }
-    setText("");
-    setImg(null);
-  };
+    if (file.size > MAX_IMAGE_BYTES) {
+      setSendError("Image must be smaller than 10MB.");
+      e.target.value = "";
+      return;
+    }
+
+    setSendError(null);
+    setImg(file);
+  }, []);
+
+  const handleSend = useCallback(async () => {
+    const trimmedText = text.trim();
+    if ((!trimmedText && !img) || sending) return;
+
+    setSending(true);
+    setSendError(null);
+
+    const message: OutgoingMessage = {
+      id: uuidv4(),
+      senderId: currentUser?.uid,
+      senderName: currentUser?.displayName,
+      senderAvatar: currentUser?.photoURL || "",
+      date: Timestamp.now(),
+    };
+
+    try {
+      if (img) {
+        const downloadURL = await uploadChatImage(img);
+        message.message = { img: downloadURL };
+      } else {
+        message.message = { text: trimmedText };
+      }
+
+      await updateDoc(doc(db, "chats", state.chatId), {
+        messages: arrayUnion(message),
+      });
+
+      setText("");
+      setImg(null);
+    } catch (error) {
+      console.error("Error sending message:", error);
+      if (error instanceof Error && error.message === "CHAT_IMAGE_UPLOAD_FAILED") {
+        setSendError("Couldn't upload that image. Please try again.");
+      } else {
+        setSendError("Couldn't send that. Please try again.");
+      }
+    } finally {
+      setSending(false);
+    }
+  }, [text, img, sending, currentUser, state.chatId]);
 
   const handleFileIconClick = () => {
     fileInputRef.current?.click();
@@ -87,36 +140,31 @@ const ChatInput: React.FC = () => {
 
   const handleRemoveFile = () => {
     setImg(null);
+    setSendError(null);
   };
 
   const renderFilePreview = () => {
-    if (img) {
-      // Check if the selected file is an image
-      if (img.type.startsWith("image/")) {
-        return (
-          <div className="imgPreviewContainer">
-            <img src={URL.createObjectURL(img)} alt="File Preview" className="imgPreview" />
-            <IconButton className="removeImgIcon" onClick={handleRemoveFile}>
-              <CloseRoundedIcon />
-            </IconButton>
-          </div>
-        );
-      } else {
-        return (
-          <div className="filePreviewContainer">
-            <p>{img.name}</p>
-            <IconButton className="removeFileIcon" onClick={handleRemoveFile}>
-              <CloseRoundedIcon />
-            </IconButton>
-          </div>
-        );
-      }
-    }
-    return null;
+    if (!img) return null;
+    return (
+      <div className="imgPreviewContainer">
+        <img
+          src={URL.createObjectURL(img)}
+          alt="Selected attachment preview"
+          className="imgPreview"
+        />
+        <IconButton
+          className="removeImgIcon"
+          onClick={handleRemoveFile}
+          aria-label="Remove attached image"
+        >
+          <CloseRoundedIcon aria-hidden="true" />
+        </IconButton>
+      </div>
+    );
   };
 
   const handleEnterKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault();
       handleSend();
     }
@@ -126,74 +174,116 @@ const ChatInput: React.FC = () => {
     setText((prevText) => prevText + emojiData.emoji);
     setShowEmojiPicker(false);
   };
-  
+
+  const handleEmojiPickerKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Escape") {
+      setShowEmojiPicker(false);
+    }
+  };
+
   return (
     <div className="chatInput">
-      <form>
+      {sendError && (
+        <p className="sendError" role="alert">
+          {sendError}
+        </p>
+      )}
+
+      <form onSubmit={(e) => e.preventDefault()}>
         {renderFilePreview()}
         <InputBase
           placeholder={img ? "" : "Type a message..."}
-          inputProps={{ 'aria-label': 'type a message' }}
+          inputProps={{ "aria-label": "Type a message" }}
           className="inputBase"
           name="input"
           onChange={(e) => setText(e.target.value)}
           value={text}
           onKeyDown={handleEnterKey}
+          multiline
+          maxRows={5}
         />
       </form>
+
       <div className="chatIcons">
         <div className="chatOptions">
-          <IconButton className="chatIcon">
-            <Tooltip title="Text Format" placement="bottom" arrow enterDelay={500} leaveDelay={200} aria-label="text format">
-              <TextFieldsRoundedIcon />
-            </Tooltip>
-          </IconButton>
-          <IconButton className="chatIcon" onClick={handleFileIconClick}>
-            <Tooltip
-              title="Attach a file"
-              placement="bottom"
-              arrow
-              enterDelay={500}
-              leaveDelay={200}
-              aria-label="attach a file"
+          <Tooltip title="Text format (coming soon)">
+            <span>
+              <IconButton className="chatIcon" disabled aria-label="Text format (coming soon)">
+                <TextFieldsRoundedIcon aria-hidden="true" />
+              </IconButton>
+            </span>
+          </Tooltip>
+
+          <Tooltip title="Attach an image">
+            <IconButton
+              className="chatIcon"
+              onClick={handleFileIconClick}
+              aria-label="Attach an image"
             >
-              <AttachFileRoundedIcon />
-            </Tooltip>
-          </IconButton>
+              <AttachFileRoundedIcon aria-hidden="true" />
+            </IconButton>
+          </Tooltip>
           <input
             ref={fileInputRef}
             type="file"
             id="fileInput"
             name="fileInput"
+            accept="image/*"
             style={{ display: "none" }}
-            onChange={(e) => setImg(e.target.files![0])}
+            onChange={handleFileChange}
           />
-          <IconButton className="chatIcon" onClick={() => setShowEmojiPicker((prev) => !prev)}>
-            <Tooltip title="Emoji" placement="bottom" arrow enterDelay={500} leaveDelay={200} aria-label="emoji">
-              <MoodRoundedIcon />
-            </Tooltip>
-          </IconButton>
-          <IconButton className="chatIcon">
-            <Tooltip title="Insert Link" placement="bottom" arrow enterDelay={500} leaveDelay={200} aria-label="insert link">
-              <InsertLinkRoundedIcon />
-            </Tooltip>
-          </IconButton>
+
+          <Tooltip title="Emoji">
+            <IconButton
+              className="chatIcon"
+              onClick={() => setShowEmojiPicker((prev) => !prev)}
+              aria-label="Emoji picker"
+              aria-expanded={showEmojiPicker}
+            >
+              <MoodRoundedIcon aria-hidden="true" />
+            </IconButton>
+          </Tooltip>
+
+          <Tooltip title="Insert link (coming soon)">
+            <span>
+              <IconButton className="chatIcon" disabled aria-label="Insert link (coming soon)">
+                <InsertLinkRoundedIcon aria-hidden="true" />
+              </IconButton>
+            </span>
+          </Tooltip>
         </div>
+
         <div className="chatSend">
-          <IconButton className="chatIcon">
-            <Tooltip title="Voice message" placement="bottom" enterDelay={500} leaveDelay={200} aria-label="voice message">
-              <MicRoundedIcon />
-            </Tooltip>
-          </IconButton>
-          <IconButton className="chatIconSend" onClick={handleSend}>
-            <Tooltip title="Send" placement="bottom" enterDelay={500} leaveDelay={200} aria-label="send">
-              <SendRoundedIcon />
-            </Tooltip>
-          </IconButton>
+          <Tooltip title="Voice message (coming soon)">
+            <span>
+              <IconButton className="chatIcon" disabled aria-label="Voice message (coming soon)">
+                <MicRoundedIcon aria-hidden="true" />
+              </IconButton>
+            </span>
+          </Tooltip>
+
+          <Tooltip title={sending ? "Sending…" : "Send"}>
+            <span>
+              <IconButton
+                className="chatIconSend"
+                onClick={handleSend}
+                disabled={sending || (!text.trim() && !img)}
+                aria-label={sending ? "Sending…" : "Send message"}
+              >
+                <SendRoundedIcon aria-hidden="true" />
+              </IconButton>
+            </span>
+          </Tooltip>
         </div>
       </div>
+
       {showEmojiPicker && (
-        <div className="emojiPickerContainer">
+        <div
+          className="emojiPickerContainer"
+          role="dialog"
+          aria-label="Emoji picker"
+          onKeyDown={handleEmojiPickerKeyDown}
+        >
           <EmojiPicker onEmojiClick={handleEmojiClick} />
         </div>
       )}

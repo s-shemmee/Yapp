@@ -1,0 +1,144 @@
+@use "../styles/tokens" as *;
+
+.chatInput {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  flex-direction: column;
+  width: 100%;
+  gap: 10px;
+  background-color: $white;
+  border-radius: $radius-md;
+  padding: 16px 20px;
+  box-shadow: 0px 4px 10px rgba(9, 9, 9, 0.1);
+
+  .sendError {
+    font-size: 0.85rem;
+    color: $error-color;
+    width: 100%;
+  }
+
+  form {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: row;
+    gap: 10px;
+
+    .imgPreviewContainer {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 5px;
+      flex-shrink: 0;
+
+      .imgPreview {
+        width: 64px;
+        height: 64px;
+        border-radius: 8px;
+        object-fit: cover;
+      }
+    }
+  }
+
+  .inputBase {
+    width: 100%;
+    border: none;
+    outline: none;
+    background-color: transparent;
+    font-size: 1rem;
+    font-weight: 500;
+    color: #222;
+
+    &::placeholder {
+      font-weight: 500;
+      color: $grey-light;
+      font-style: normal;
+    }
+  }
+
+  .chatIcons {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-direction: row;
+    gap: 10px;
+    width: 100%;
+
+    .MuiIconButton-root:focus-visible {
+      @include focus-ring;
+    }
+
+    .chatOptions {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+
+      .chatIcon {
+        color: $primary-color;
+        transition: color 0.2s ease-in-out;
+
+        &:not(.Mui-disabled):hover,
+        &:not(.Mui-disabled):focus-visible {
+          color: $primary-color-dark;
+        }
+
+        &.Mui-disabled {
+          color: $grey-light;
+        }
+      }
+    }
+
+    .chatSend {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: row;
+      gap: 10px;
+
+      .chatIcon {
+        color: $primary-color;
+        transition: color 0.2s ease-in-out;
+
+        &:not(.Mui-disabled):hover,
+        &:not(.Mui-disabled):focus-visible {
+          color: $primary-color-dark;
+        }
+
+        &.Mui-disabled {
+          color: $grey-light;
+        }
+      }
+
+      .chatIconSend {
+        font-size: 2rem;
+        color: $white;
+        background-color: $primary-color;
+        border-radius: 50%;
+        transition: background-color 0.2s ease-in-out;
+
+        &:not(.Mui-disabled):hover,
+        &:not(.Mui-disabled):focus-visible {
+          background-color: $primary-color-dark;
+        }
+
+        &.Mui-disabled {
+          background-color: $grey-light;
+        }
+      }
+    }
+  }
+
+  .emojiPickerContainer {
+    position: absolute;
+    bottom: calc(100% + 8px);
+    right: 0;
+    z-index: 20;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+    border-radius: $radius-md;
+    overflow: hidden;
+  }
+}
