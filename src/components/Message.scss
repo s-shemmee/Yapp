@@ -137,3 +137,19 @@
     }
   }
 }
+
+.messageLink {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  word-break: break-all;
+
+  &:hover,
+  &:focus-visible {
+    text-decoration-thickness: 2px;
+  }
+
+  &:focus-visible {
+    @include focus-ring;
+  }
+}
