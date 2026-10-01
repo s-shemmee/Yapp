@@ -49,15 +49,15 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
       onClose={onCancel}
       aria-labelledby="confirm-dialog-title"
       aria-describedby="confirm-dialog-description"
-      slotProps={{
-        paper: {
-          sx: {
-            borderRadius: "20px",
-            padding: "8px",
-            minWidth: { xs: "90%", sm: "400px" },
-            boxShadow: "0 20px 60px rgba(0, 0, 0, 0.25)",
-          },
+      PaperProps={{
+        sx: {
+          borderRadius: "20px",
+          padding: "8px",
+          minWidth: { xs: "90%", sm: "400px" },
+          boxShadow: "0 20px 60px rgba(0, 0, 0, 0.25)",
         },
+      }}
+      slotProps={{
         backdrop: {
           sx: {
             backgroundColor: "rgba(20, 15, 35, 0.4)",
