@@ -1,5 +1,22 @@
 @use "../styles/tokens" as *;
 
+.chatCard.unread {
+  .chatUserName,
+  .chatLastMessage {
+    font-weight: 700;
+  }
+}
+
+.unreadDot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-left: 6px;
+  border-radius: 50%;
+  background: #9474f4;
+  vertical-align: middle;
+}
+
 .chatsContainer {
   display: flex;
   align-items: center;

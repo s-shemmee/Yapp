@@ -1,12 +1,13 @@
-import React, { useContext, useEffect, useState } from "react";
+import React, { useContext, useEffect, useState, useCallback } from "react";
 import Searchbar from "../components/Searchbar";
-import { doc, onSnapshot, Timestamp } from "firebase/firestore";
+import { doc, onSnapshot, updateDoc, Timestamp } from "firebase/firestore";
 import { AuthContext } from "../context/AuthContext";
 import { ChatContext } from "../context/ChatContext";
 import { db } from "../firebase";
 import {
   MoreHorizRounded as MoreHorizRoundedIcon,
   MarkChatUnreadRounded as MarkChatUnreadRoundedIcon,
+  MarkChatReadRounded as MarkChatReadRoundedIcon,
   ArchiveRounded as ArchiveRoundedIcon,
   DeleteRounded as DeleteRoundedIcon,
 } from "@mui/icons-material";
@@ -35,6 +36,7 @@ interface ChatEntry {
     profession: string;
   };
   date?: Timestamp;
+  unread?: boolean;
 }
 
 type ChatDataMap = Record<string, ChatEntry>;
@@ -62,7 +64,6 @@ const Chats: React.FC<ChatsProps> = ({ onSelectChat, selectedChatId }) => {
     event: React.MouseEvent<HTMLButtonElement>,
     chatId: string
   ) => {
-
     event.stopPropagation();
     setAnchorEls((prev) => ({ ...prev, [chatId]: event.currentTarget }));
   };
@@ -112,12 +113,36 @@ const Chats: React.FC<ChatsProps> = ({ onSelectChat, selectedChatId }) => {
     return () => unsubscribes.forEach((unsubscribe) => unsubscribe());
   }, [chatData]);
 
+  const setUnread = useCallback(
+    async (chatId: string, unread: boolean) => {
+      if (!currentUser) return;
+      try {
+        await updateDoc(doc(db, "userChats", currentUser.uid), {
+          [`${chatId}.unread`]: unread,
+        });
+      } catch (error) {
+        console.error("Failed to update unread status:", error);
+      }
+    },
+    [currentUser]
+  );
+
   const openChat = (chatId: string) => {
     const chat = chatData[chatId];
     if (chat?.userInfo) {
       onSelectChat(chatId);
       dispatch({ type: "CHANGE_USER", payload: { ...chat.userInfo } });
+      // Opening a chat you'd manually marked unread clears that flag,
+      if (chat.unread) {
+        setUnread(chatId, false);
+      }
     }
+  };
+
+  const handleToggleUnread = (chatId: string) => {
+    const current = chatData[chatId]?.unread ?? false;
+    setUnread(chatId, !current);
+    handleMenuClose(chatId);
   };
 
   const sortedChatIds = Object.keys(chatData).sort((a, b) => {
@@ -136,7 +161,7 @@ const Chats: React.FC<ChatsProps> = ({ onSelectChat, selectedChatId }) => {
 
         <ul className="chatCards">
           {sortedChatIds.map((chatId) => {
-            const { userInfo } = chatData[chatId];
+            const { userInfo, unread } = chatData[chatId];
             if (!userInfo) return null;
 
             const lastMessage = lastMessages[chatId];
@@ -153,7 +178,9 @@ const Chats: React.FC<ChatsProps> = ({ onSelectChat, selectedChatId }) => {
             return (
               <li
                 key={chatId}
-                className={`chatCard${isSelected ? " selected" : ""}`}
+                className={`chatCard${isSelected ? " selected" : ""}${
+                  unread ? " unread" : ""
+                }`}
               >
                 <button
                   type="button"
@@ -169,7 +196,12 @@ const Chats: React.FC<ChatsProps> = ({ onSelectChat, selectedChatId }) => {
                     />
                     <div className="chatContent">
                       <div className="chatUser">
-                        <h4 className="chatUserName">{userInfo.displayName}</h4>
+                        <h4 className="chatUserName">
+                          {userInfo.displayName}
+                          {unread && (
+                            <span className="unreadDot" aria-label="Unread" />
+                          )}
+                        </h4>
                         <span className="chatUserProfession">
                           {userInfo.profession || "No profession"}
                         </span>
@@ -202,13 +234,17 @@ const Chats: React.FC<ChatsProps> = ({ onSelectChat, selectedChatId }) => {
                   open={Boolean(anchorEls[chatId])}
                   onClose={() => handleMenuClose(chatId)}
                 >
-                  <MenuItem disabled>
+                  <MenuItem onClick={() => handleToggleUnread(chatId)}>
                     <ListItemIcon>
-                      <MarkChatUnreadRoundedIcon sx={{ color: PRIMARY, fontSize: "20px" }} />
+                      {unread ? (
+                        <MarkChatReadRoundedIcon sx={{ color: PRIMARY, fontSize: "20px" }} />
+                      ) : (
+                        <MarkChatUnreadRoundedIcon sx={{ color: PRIMARY, fontSize: "20px" }} />
+                      )}
                     </ListItemIcon>
                     <ListItemText>
                       <Typography variant="body2" sx={{ color: GREY, fontSize: "14px", fontWeight: 600 }}>
-                        Mark as unread (coming soon)
+                        {unread ? "Mark as read" : "Mark as unread"}
                       </Typography>
                     </ListItemText>
                   </MenuItem>
